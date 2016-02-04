@@ -14,8 +14,30 @@ var redis = require ("redis");
 var subscriber = redis.createClient ();
 var client = redis.createClient ();
 
+var PROJECT_PID_TEMP = '/tmp/.app-project';
+
+debug ('Reading projectpid');
+var projectpid = 0;
+try
+{
+	projectpid = fs.readFileSync (PROJECT_PID_TEMP);
+	debug ('projectpid '+projectpid);
+}
+catch (e)
+{
+
+}
+
+debug ('Erasing signals');
+client.ltrim ('app-project', 0, -1);
+
 var sendingValues = false;
 var storedValues = false;
+
+var sendQueue = [];
+var sendLowPriorityQueue = [];
+
+var sending = false;
 
 subscriber.on ('error', function (error)
 {
@@ -95,7 +117,7 @@ serial.open (function (error)
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:config_file.jid, c:boardtype.toString(), r:project!==null});
+	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0});
 }
 
 serial.on ('error', function (error)
@@ -166,8 +188,8 @@ function openShell (p)
 		  name: 'xterm-color',
 		  cols: p.c,
 		  rows: p.r,
-		  cwd: process.env.HOME,
-		  env: process.env
+		  cwd: '/wyliodrin',
+		  env: _.assign (process.env, {HOME:'/wyliodrin'})
 		});
 
 		shell.on('data', function(data) {
@@ -196,9 +218,12 @@ function resizeShell (cols, rows)
 
 function stopProject ()
 {
-	if (project !== null)
+	if (projectpid !== 0)
 	{
-		child_process.exec (settings.stop+' '+project.pid);
+		child_process.exec (settings.stop+' '+projectpid);
+		projectpid = 0;
+		fs.unlink (PROJECT_PID_TEMP);
+		if (project === null) status ();
 	}
 }
 
@@ -210,10 +235,10 @@ function runProject (p)
 	if (p.l === 'python') ext = 'py';
 	else
 	if (p.l === 'visual') ext = 'py';
-	if (project)
+	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
-		debug ('Stop project already started '+project.pid);
+		debug ('Stop project already started '+projectpid);
 		stopProject ();
 	}
 	else
@@ -247,8 +272,12 @@ function runProject (p)
 						  cols: p.c,
 						  rows: p.r,
 						  cwd: dir,
-						  env: _.assign (process.env, {wyliodrin_project:"app-project"})
+						  env: _.assign (process.env, {HOME:'/wyliodrin', wyliodrin_project:"app-project"})
 						});
+
+						projectpid = project.pid;
+
+						fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
 
 						if (project) send ('p', {a:'start', r:'d'});
 						else send ('p', {a:'start', r:'e'});
@@ -258,7 +287,7 @@ function runProject (p)
 						project.on('data', function(data) {
 							if (runAnotherProject === null)
 							{
-						  		send ('p', {a:'k', t:data});
+						  		sendLowPriority ('p', {a:'k', t:data});
 						  	}
 						});
 						project.resize (p.c, p.r);
@@ -463,30 +492,66 @@ function receivedDataSerial (data)
 	
 }
 
+function sendLowPriority (tag, data)
+{
+	sendLowPriorityQueue.push ({t: tag, d: data});
+	_send ();
+}
+
 function send (tag, data)
 {
-	debug ('Sening tag '+tag+' data '+JSON.stringify (data));
-	var m = escape(msgpack.encode ({t:tag, d:data}));
-	// console.log (msgpack.decode (new Buffer (m, 'base64')));
-	// console.log (m.toString ());
-	if (isConnected)
+	sendQueue.push ({t: tag, d: data});
+	_send ();
+}
+
+function _send ()
+{
+	if (sending === false)
 	{
-		serial.write (m, function (err, result)
+		var message = null;
+		if (sendQueue.length>0)
 		{
-			if (!err)
-			{
-				debug ('Sent '+m.length+' bytes');
-			}
-			else 
-			{
-				debug ('Send error '+m);
-				console.log (err);
-			}
-		});
-		serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+			message = sendQueue[0];
+			sendQueue.splice (0,1);
+		}
+		else if (sendLowPriorityQueue.length>0)
 		{
-			// console.log (err);
-		});
+			message = sendLowPriorityQueue[0];
+			sendLowPriorityQueue.splice (0,1);
+		}
+		if (message)
+		{
+			debug ('Sening tag '+message.t+' data '+JSON.stringify (message.d));
+			var m = escape(msgpack.encode (message));
+			// console.log (msgpack.decode (new Buffer (m, 'base64')));
+			// console.log (m.toString ());
+			if (isConnected)
+			{
+				sending = true;
+				serial.write (m, function (err, result)
+				{
+					if (!err)
+					{
+						debug ('Sent '+m.length+' bytes');
+					}
+					else 
+					{
+						debug ('Send error '+m);
+						console.log (err);
+					}
+				});
+				serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+				{
+					sending = false;
+					_send ();
+					// console.log (err);
+				});
+			}
+		}
+	}
+	else
+	{
+		debug ('Already sedning');
 	}
 }
 
@@ -496,7 +561,7 @@ function sendValues (projectId)
 	{
 		sendingValues = true;
 		debug ('Signal');
-		client.lrange (projectId, 0, -1, function (err, signals)
+		client.lrange (projectId, 0, 100, function (err, signals)
 		{
 			if (err)
 			{
@@ -508,7 +573,7 @@ function sendValues (projectId)
 				_.each (signals, function (signal)
 				{
 					var s = JSON.parse (signal);
-					send ('v', {t:s.timestamp, s:s.signals});
+					sendLowPriority ('v', {t:s.timestamp, s:s.signals});
 				});
 				client.ltrim (projectId, signals.length, -1, function (err)
 				{
