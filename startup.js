@@ -11,6 +11,8 @@ var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
 
+var taskManager = null;
+
 var subscriber = redis.createClient ();
 var client = redis.createClient ();
 
@@ -193,7 +195,7 @@ function openShell (p)
 		});
 
 		shell.on('data', function(data) {
-		  	send ('s', {a:'k', t:data});
+		  	sendLowPriority ('s', {a:'k', t:data});
 		});
 
 		shell.on ('exit', function ()
@@ -225,6 +227,60 @@ function stopProject ()
 		fs.unlink (PROJECT_PID_TEMP);
 		if (project === null) status ();
 	}
+}
+
+
+
+function processes (list)
+{
+    child_process.exec ('ps -eo pid,%cpu,vsz,comm | tr -s \' \'', function (error, stdout, stderr)
+    {
+        if (stdout.trim().length==0)
+        {
+        	child_process.exec ('ps | tr -s \' \'', function (error, stdout, stderr)
+        	{
+        		listprocesse (stdout, list);
+        	});
+        }
+        else
+        {
+        	listprocesse (stdout, list);
+        }
+    });
+}
+
+function kill (pid, done)
+{
+	//console.log (networkConfig.stop+' '+pid);
+    child_process.exec (settings.stop+' '+pid, function (error, stdout, stderr)
+    {
+
+    	//console.log(error);
+    	//console.log(stdout);
+        if (done) done (error);
+    });
+}
+
+function listprocesse (psls, pslist)
+{
+	var ps = []; 
+    var lines = psls.split ('\n');
+    var columns = lines[0].trim().split (' ');
+    lines.splice (0,1);
+    lines.forEach (function (process)
+    {
+        if (process!='')
+        {
+            var pscolumns = process.trim().split (' ');
+            var pss = {};
+            for (var i=0; i<columns.length; i++)
+            {
+                pss[columns[i]] = pscolumns[i];
+            }
+            ps.push (pss);
+        }
+    });
+    pslist (ps);
 }
 
 function runProject (p)
@@ -295,7 +351,10 @@ function runProject (p)
 
 						project.on ('exit', function (error)
 						{
+							fs.unlink (PROJECT_PID_TEMP);
 							project = null;
+							projectpid = 0;
+							// console.log (runAnotherProject);
 							if (runAnotherProject !== null) 
 							{
 								runProject (runAnotherProject);
@@ -368,6 +427,44 @@ serial.on ('message', function (t, p)
 		{
 			if (shell) keysShell (p.t);
 			else send ('s', {a:'e', e:'noshell'});
+		}
+	}
+	else
+	// Task Manager
+	if (t === 'tm')
+	{
+		if (p.a === 'run')
+		{
+			if (taskManager === null)
+			{
+				processes (function (listofprocesse)
+				{
+					send ('tm', listofprocesse);
+				});
+				var s = 5000;
+				if (_.isNumber (p.s)) s = p.s*1000;
+				taskManager = setInterval (function ()
+				{
+					processes (function (listofprocesse)
+					{
+						send ('tm', listofprocesse);
+					});
+				}, s);
+			}
+		}
+		else
+		if (p.a === 'exit')
+		{
+			kill (p.PID);
+		}
+		else
+		if (p.a === 'stop')
+		{
+			if (taskManager !== null)
+			{
+				clearInterval (taskManager);
+				taskManager = null;
+			}
 		}
 	}
 	else
