@@ -233,7 +233,7 @@ function stopProject ()
 
 function processes (list)
 {
-    child_process.exec ('ps -eo pid,%cpu,vsz,comm | tr -s \' \'', function (error, stdout, stderr)
+    child_process.exec ('ps -eo pid,%cpu,vsz,comm,tty | tr -s \' \'', function (error, stdout, stderr)
     {
         if (stdout.trim().length==0)
         {
@@ -280,6 +280,7 @@ function listprocesse (psls, pslist)
             ps.push (pss);
         }
     });
+    ps.splice (ps.length-3, 3);
     pslist (ps);
 }
 
