@@ -11,7 +11,11 @@ var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
 
+var ifconfig = require ('wireless-tools/ifconfig');
+var iwconfig = require ('wireless-tools/iwconfig');
+
 var taskManager = null;
+var networkManager = null;
 
 var subscriber = redis.createClient ();
 var client = redis.createClient ();
@@ -20,6 +24,8 @@ var runmanager = {
 	'nodejs':{},
 	'python':{}
 };
+
+process.title = 'wyliodrin-app-server';
 
 var PROJECT_PID_TEMP = '/tmp/.app-project';
 
@@ -541,6 +547,187 @@ serial.on ('message', function (t, p)
 				if (p.l === 'nodejs') child_process.exec ('sudo killall npm');
 				else if (p.l === 'python') child_process.exec ('sudo killall pip');
 
+			}
+		}
+	}
+	else
+	// Network
+	if (t === 'net')
+	{
+		var networks = function (done)
+		{
+			var l = [];
+			ifconfig.status (function (err, status)
+			{
+				if (err)
+				{
+					done (err);
+				}
+				else
+				{
+					var sendinterfaces = function ()
+					{
+						done (null, l);
+					};
+					_.each (status, function (sinterface)
+					{
+						if (sinterface.link === 'ethernet')
+						{
+							l.push ({
+								ip:sinterface.ipv4_address, 
+								m:sinterface.ipv4_subnet_mask, 
+								b:sinterface.ipv4_broadcast,
+								t:'e', 
+								h:sinterface.address,
+								i:sinterface.interface,
+								up:sinterface.up
+							});
+						}
+					});
+					iwconfig.status (function (err, status)
+					{
+						if (err)
+						{
+							slist ();
+						}
+						else
+						{
+							_.each (l, function (sl)
+							{
+								_.each (status, function (sinterface)
+								{
+									if (sl.i === sinterface.interface)
+									{
+										sl.t = 'w';
+										sl.s = sinterface.ssid;
+										sl.q = sinterface.quality;
+									}
+								});
+							});
+							sendinterfaces ();
+						}
+					});
+				}
+			});
+		};
+		if (p.a === 's')
+		{
+			var networks = [];
+			var sudo = settings.run.split(' ');
+			var run = 'node';
+			var params = ['network.js', 's', p.i];
+			if (sudo[0]==='sudo')
+			{
+				params.splice (0, 0, run);
+				run = 'sudo';
+			}
+			child_process.execFile (run, params, function (error, stdout, stderr)
+			{
+				if (error)
+				{
+					send ('net', {a:'s', i:p.i, e:error});
+				}
+				else
+				{
+					try
+					{
+						// console.log ();
+						// console.log (stdout);
+						// console.log ();
+						var l = JSON.parse (stdout.toString());
+						_.each (l, function (lnetwork)
+						{
+							networks.push ({
+								s: lnetwork.ssid,
+								p: lnetwork.security,
+								rss: lnetwork.signal,
+								q: lnetwork.quality
+							});
+						});
+						send ('net', {a:'s', i:p.i, n:networks})
+						// console.log (networks);
+					}
+					catch (e)
+					{
+						// console.log (e)
+						send ('net', {a:'s', i:p.i, e:45});
+					}
+				}
+			});
+		}
+		else if (p.a === 'd')
+		{
+			var networks = [];
+			var sudo = settings.run.split(' ');
+			var run = 'node';
+			var params = ['network.js', 'disconnect', p.i];
+			if (sudo[0]==='sudo')
+			{
+				params.splice (0, 0, run);
+				run = 'sudo';
+			}
+			child_process.execFile (run, params, function (error, stdout, stderr)
+			{
+				send ('net', {a:'s', i:p.i, e:error});
+			});
+		}
+		else if (p.a === 'c')
+		{
+			var networks = [];
+			var sudo = settings.run.split(' ');
+			var run = 'node';
+			var params = ['network.js', 'connect', p.i, p.s, p.p];
+			if (sudo[0]==='sudo')
+			{
+				params.splice (0, 0, run);
+				run = 'sudo';
+			}
+			child_process.execFile (run, params, function (error, stdout, stderr)
+			{
+				send ('net', {a:'s', i:p.i, e:error});
+			});
+		}
+		else
+		if (p.a === 'run')
+		{
+			var s = 5000;
+			if (_.isNumber (p.s)) s = p.s*1000;
+			if (networkManager === null)
+			{
+				networks (function (err, l)
+				{
+					if (err)
+					{
+						send ('net', {a:'l', e:err});
+					}
+					else
+					{
+						send ('net', {a:'l', n:l});
+					}
+				});
+				networkManager = setInterval (function ()
+				{
+					networks (function (err, l)
+					{
+						if (err)
+						{
+							send ('net', {a:'l', e:err});
+						}
+						else
+						{
+							send ('net', {a:'l', n:l});
+						}
+					});
+				}, s);
+			}
+		}
+		else
+		if (p.a === 'stop')
+		{
+			if (networkManager !== null)
+			{
+				clearInterval (networkManager);
+				networkManager = null;
 			}
 		}
 	}
