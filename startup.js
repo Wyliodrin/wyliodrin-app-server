@@ -102,7 +102,7 @@ try
 }
 catch (e)
 {
-	debug ('wyliodrin.json missing, default setup')
+	debug ('wyliodrin.json missing, initial setup')
 	config_file.jid = '';
 }
 
