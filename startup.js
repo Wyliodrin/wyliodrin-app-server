@@ -94,7 +94,16 @@ if (!boardtype)
 debug ('Loading settings from /etc/wyliodrin/settings_'+boardtype+'.json');
 var settings = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
 
-var config_file = require (settings.config_file);
+var config_file = {};
+
+try
+{
+	require (settings.config_file);
+}
+catch (e)
+{
+	config_file.jid = '';
+}
 
 var PACKET_SEPARATOR = config_file.serialpacketseparator || 255;
 var PACKET_ESCAPE = config_file.serialpacketseparator || 0;
