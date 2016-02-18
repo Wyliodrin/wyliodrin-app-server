@@ -312,6 +312,8 @@ function runProject (p)
 	if (p.l === 'python') ext = 'py';
 	else
 	if (p.l === 'visual') ext = 'py';
+	else
+	if (p.l === 'shell') ext = 'sh';
 	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
