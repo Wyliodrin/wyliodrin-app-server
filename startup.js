@@ -17,14 +17,14 @@ var iwconfig = require ('wireless-tools/iwconfig');
 var taskManager = null;
 var networkManager = null;
 
-var ping = require ('net-ping');
-
-var session = ping.createSession ();
+var tcpp = require ('tcp-ping');
 
 var networkPing = function ()
 {
-	session.pingHost ('www.google.com', function (error, host)
+	tcpp.ping ({address:'www.google.com', attempts: 1}, function (error, host)
 	{
+		console.log (error);
+		console.log (host);
 		if (!error) network = true;
 		else network = false;
 		setTimeout (networkPing, 60*1000);
