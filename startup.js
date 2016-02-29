@@ -17,6 +17,22 @@ var iwconfig = require ('wireless-tools/iwconfig');
 var taskManager = null;
 var networkManager = null;
 
+var ping = require ('net-ping');
+
+var session = ping.createSession ();
+
+var networkPing = function ()
+{
+	session.pingHost ('www.google.com', function (error, host)
+	{
+		if (!error) network = true;
+		else network = false;
+		setTimeout (networkPing, 60*1000);
+	});
+}
+
+networkPing ();
+
 var subscriber = redis.createClient ();
 var client = redis.createClient ();
 
@@ -24,6 +40,8 @@ var runmanager = {
 	'nodejs':{},
 	'python':{}
 };
+
+var network = false;
 
 process.title = 'wyliodrin-app-server';
 
@@ -140,7 +158,7 @@ serial.open (function (error)
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0});
+	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
 }
 
 serial.on ('error', function (error)
