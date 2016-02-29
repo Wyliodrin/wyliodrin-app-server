@@ -21,13 +21,14 @@ var tcpp = require ('tcp-ping');
 
 var networkPing = function ()
 {
-	tcpp.ping ({address:'www.google.com', attempts: 1}, function (error, host)
+	tcpp.ping ({address:'www.google.com', attempts: 5}, function (error, host)
 	{
 		console.log (error);
 		console.log (host);
 		if (!error) network = true;
 		else network = false;
 		setTimeout (networkPing, 60*1000);
+		status ();
 	});
 }
 
