@@ -11,6 +11,21 @@ var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
 
+var pam = require ('authenticate-pam');
+
+var SOCKET = 1;
+var SERIAL = 2;
+
+var EventEmitter = require ('events').EventEmitter;
+
+var net = require ('net');
+
+var socketConnected = false;
+
+var packets = new EventEmitter ();
+
+var socket = null;
+
 var ifconfig = require ('wireless-tools/ifconfig');
 var iwconfig = require ('wireless-tools/iwconfig');
 
@@ -25,9 +40,9 @@ var networkPing = function ()
 	{
 		console.log (error);
 		console.log (host);
-		if (!error) network = true;
+		if (!error && !isNaN(host.avg)) network = true;
 		else network = false;
-		setTimeout (networkPing, 60*1000);
+		setTimeout (networkPing, (network?60:10)*1000);
 		status ();
 	});
 }
@@ -66,10 +81,13 @@ client.ltrim ('app-project', 0, -1);
 var sendingValues = false;
 var storedValues = false;
 
+var _send = null;
+
 var sendQueue = [];
 var sendLowPriorityQueue = [];
 
-var sending = false;
+var serialSending = false;
+var socketSending = false;
 
 subscriber.on ('error', function (error)
 {
@@ -130,6 +148,7 @@ var PACKET_ESCAPE = config_file.serialpacketseparator || 0;
 var BUFFER_PACKET_SEPARATOR = new Buffer([PACKET_SEPARATOR, PACKET_SEPARATOR]);
 var BUFFER_SIZE = config_file.serialbuffersize || 4096;
 var receivedFirstPacketSeparator = false;
+var login = false;
 
 var receivedData = new Buffer (BUFFER_SIZE);
 var receivedDataPosition = 0;
@@ -171,15 +190,105 @@ serial.on ('error', function (error)
 
 var timer = 50;
 
+reset (SERIAL);
+
 serial.on ('data', function (data)
 {
+	if (socket !== null) 
+	{
+		debug ('Serial data, socket');
+		socket.end ();
+		reset (SERIAL);
+	}
 	// console.log (data.length);
+	// console.log (data.toString ());
 	for (var pos = 0; pos < data.length; pos++)
 	{
 		// console.log (data[pos]);
-		receivedDataSerial (data[pos]);
+		receivedDataPacket (data[pos]);
 	}
 });
+
+var server = net.createServer (function (_socket)
+{
+	if (!socket)
+	{
+		socket = _socket;
+		debug ('Socket connection');
+		reset (SOCKET);
+		socket.on ('data', function (data)
+		{
+			// console.log (data.length);
+			for (var pos = 0; pos < data.length; pos++)
+			{
+				// console.log (data[pos]);
+				receivedDataPacket (data[pos]);
+			}
+		});
+
+		socket.on ('error', function ()
+		{
+			debug ('Socket error '+socket);
+			reset (SERIAL);
+			socket = null;
+		});
+
+		socket.on ('end', function ()
+		{
+			reset (SERIAL);
+			debug ('Socket disconnect');
+			socket = null;
+		})
+	}
+	else
+	{
+		debug ('There is another connection already');
+		_socket.end ();
+	}
+});
+
+server.listen (config_file.server || 7000, function (err)
+{
+	var sudo = settings.run.split(' ');
+	var run = 'node';
+	var params = ['publish.js', 'p', server.address().port];
+	if (sudo[0]==='sudo')
+	{
+		params.splice (0, 0, run);
+		run = 'sudo';
+	}
+	child_process.execFile (run, params, function (error, stdout, stderr)
+	{
+	});
+});
+
+// catch ctrl+c event and exit normally
+process.on('SIGINT', function () 
+{
+	console.log('Ctrl-C...');
+	process.exit(2);
+});
+
+//catch uncaught exceptions, trace, then exit normally
+process.on('uncaughtException', function(e) 
+{
+	console.log('Uncaught Exception...');
+	console.log(e.stack);
+	process.exit(99);
+});
+
+process.on ('exit', function ()
+{
+	var sudo = settings.run.split(' ');
+	var run = 'node';
+	var params = ['publish.js', 's'];
+	if (sudo[0]==='sudo')
+	{
+		params.splice (0, 0, run);
+		run = 'sudo';
+	}
+	child_process.execFile (run, params);
+})
 
 var shell = null;
 var project = null;
@@ -446,7 +555,7 @@ function keysProject (keys)
 	if (project) project.write (keys);
 }
 
-serial.on ('message', function (t, p)
+packets.on ('message', function (t, p)
 {
 	debug ('Receive message with tag '+t);
 	// Shell
@@ -824,7 +933,23 @@ function escape (data)
 	}
 }
 
-function receivedDataSerial (data)
+function reset (type)
+{
+	receivedFirstPacketSeparator = false;
+	receivedDataPosition = 0;
+	previousByte = 0;
+	login = false;
+	if (type === SERIAL)
+	{
+		_send = _serialSend;
+	}
+	else
+	{
+		_send = _socketSend;
+	}
+}
+
+function receivedDataPacket (data)
 {
 	if (!receivedFirstPacketSeparator)
 	{
@@ -848,7 +973,36 @@ function receivedDataSerial (data)
 			{
 				var m = packet ();
 				console.log (m);
-				serial.emit ('message', m.t, m.d);
+				if (!socket || login)
+				{
+					packets.emit ('message', m.t, m.d);
+				}
+				else
+				{
+					if (m.t === 'login')
+					{
+						var username = m.d.username;
+						var password = m.d.password;
+						if (!username) username = '';
+						if (!password) password = '';
+						pam.authenticate (username, password, function (error)
+						{
+							if (!error) 
+							{
+								debug ('Login');
+								login = true;
+								send ('', null);
+								status ();
+							}
+							else 
+							{
+								debug ('Login error');
+								socket.end ();
+								login = false;
+							}
+						});
+					}
+				}
 				previousByte = 0;
 			}
 			else
@@ -968,9 +1122,9 @@ function listPackagesPython (done)
 	});
 } 
 
-function _send ()
+function _serialSend ()
 {
-	if (sending === false)
+	if (serialSending === false)
 	{
 		var message = null;
 		if (sendQueue.length>0)
@@ -985,29 +1139,29 @@ function _send ()
 		}
 		if (message)
 		{
-			debug ('Sening tag '+message.t+' data '+JSON.stringify (message.d));
+			debug ('Serial sending tag '+message.t+' data '+JSON.stringify (message.d));
 			var m = escape(msgpack.encode (message));
 			// console.log (msgpack.decode (new Buffer (m, 'base64')));
 			// console.log (m.toString ());
 			if (isConnected)
 			{
-				sending = true;
+				serialSending = true;
 				serial.write (m, function (err, result)
 				{
 					if (!err)
 					{
-						debug ('Sent '+m.length+' bytes');
+						debug ('Serial sent '+m.length+' bytes');
 					}
 					else 
 					{
-						debug ('Send error '+m);
+						debug ('Serial send error '+m);
 						console.log (err);
 					}
 				});
 				serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
 				{
-					sending = false;
-					_send ();
+					serialSending = false;
+					_serialSend ();
 					// console.log (err);
 				});
 			}
@@ -1015,7 +1169,69 @@ function _send ()
 	}
 	else
 	{
-		debug ('Already sedning');
+		debug ('Serial already sedning');
+	}
+}
+
+function _socketSend ()
+{
+	if (socketSending === false)
+	{
+		var message = null;
+		if (sendQueue.length>0)
+		{
+			message = sendQueue[0];
+			sendQueue.splice (0,1);
+		}
+		else if (sendLowPriorityQueue.length>0)
+		{
+			message = sendLowPriorityQueue[0];
+			sendLowPriorityQueue.splice (0,1);
+		}
+		if (message)
+		{
+			debug ('Socket sending tag '+message.t+' data '+JSON.stringify (message.d));
+			var m = escape(msgpack.encode (message));
+			// console.log (msgpack.decode (new Buffer (m, 'base64')));
+			// console.log (m.toString ());
+			if (isConnected)
+			{
+				if (login)
+				{
+					socketSending = true;
+					socket.write (m, function (err)
+					{
+						if (!err)
+						{
+							debug ('Socket sent '+m.length+' bytes');
+						}
+						else 
+						{
+							debug ('Socket send error '+m);
+							console.log (err);
+						}
+					});
+					socket.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+					{
+						socketSending = false;
+						_socketSend ();
+						// console.log (err);
+					});
+				}
+				else
+				{
+					debug ('Ignore packet')
+					process.nextTick (function ()
+					{
+						_socketSend ();
+					});
+				}
+			}
+		}
+	}
+	else
+	{
+		debug ('Socket already sedning');
 	}
 }
 

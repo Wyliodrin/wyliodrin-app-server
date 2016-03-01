@@ -11,7 +11,8 @@
     "async": "~1.5.2",
     "lodash": "~4.1.0",
     "wireless-tools": "~0.15.0",
-    "tcp-ping": "~0.1.1"
+    "tcp-ping": "~0.1.1",
+    "authenticate-pam": "~1.0.0"
   },
   "devDependencies": {},
   "scripts": {
