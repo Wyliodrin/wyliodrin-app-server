@@ -154,7 +154,7 @@ var receivedData = new Buffer (BUFFER_SIZE);
 var receivedDataPosition = 0;
 var previousByte = 0;
 
-var serial = new SerialPort ('/dev/ttyAMA0', {
+var serial = new SerialPort ('/dev/ttyGS0', {
 		baudrate: config_file.serialbaudrate || 115200,
 	}, false);
 
