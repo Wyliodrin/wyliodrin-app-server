@@ -154,7 +154,20 @@ var receivedData = new Buffer (BUFFER_SIZE);
 var receivedDataPosition = 0;
 var previousByte = 0;
 
-var serial = new SerialPort ('/dev/ttyGS0', {
+var board = {
+	'raspberrypi':
+	{
+		serial:'/dev/ttyAMA0',
+		firmware:'/Arduino/src/Arduino.ino'
+	},
+	'udooneo':
+	{
+		serial:'/dev/ttyGS0',
+		firmware:'/Arduino/Arduino.ino'
+	}
+};
+
+var serial = new SerialPort (board[boardtype].serial, {
 		baudrate: config_file.serialbaudrate || 115200,
 	}, false);
 
@@ -463,7 +476,7 @@ function runProject (p)
 			if (err) send ('p', {a:'start', r:'e', e:err});
 			if (!err) async.series ([
 					function (done) { fs.writeFile (dir+'/main.'+ext, p.p, done); },
-					function (done) { if (p.f) fs.writeFile (dir+'/Arduino/src/Arduino.ino', p.f, done); else setTimeout (done); },
+					function (done) { if (p.f) fs.writeFile (dir+board[boardtype].firmware, p.f, done); else setTimeout (done); },
 					function (done) { fs.writeFile (dir+'/Makefile.'+boardtype, p.m, done); }
 				],
 				function (err, results)
