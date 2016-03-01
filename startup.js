@@ -38,8 +38,8 @@ var networkPing = function ()
 {
 	tcpp.ping ({address:'www.google.com', attempts: 5}, function (error, host)
 	{
-		console.log (error);
-		console.log (host);
+		// console.log (error);
+		// console.log (host);
 		if (!error && !isNaN(host.avg)) network = true;
 		else network = false;
 		setTimeout (networkPing, (network?60:10)*1000);
@@ -318,7 +318,7 @@ function packet ()
 	debug ('Packet of size '+receivedDataPosition+' received');
 	var data = receivedData.slice (0, receivedDataPosition);
 	receivedDataPosition = 0;
-	console.log (data.length)
+	// console.log (data.length)
 	var m;
 	try
 	{
@@ -1069,7 +1069,7 @@ function listPackagesNodejs (done)
 				{
 					packages.push ({n:name, v:packagevalue.version})
 				});
-				console.log (packages);
+				// console.log (packages);
 				done (null, packages);
 			}
 			catch (e)
@@ -1110,7 +1110,7 @@ function listPackagesPython (done)
 						// console.log (packagevalue.match(regex));
 					}
 				});
-				console.log (packages);
+				// console.log (packages);
 				done (null, packages);
 			}
 			catch (e)
