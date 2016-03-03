@@ -32,6 +32,8 @@ var iwconfig = require ('wireless-tools/iwconfig');
 var taskManager = null;
 var networkManager = null;
 
+var nm = require ('./nm.js');
+
 var tcpp = require ('tcp-ping');
 
 var networkPing = function ()
@@ -121,6 +123,11 @@ var EventEmitter = require ('events').EventEmitter;
 
 debug ('Reading board type');
 var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype');
+var nettype = 
+{
+	'raspberrypi':'iwconfig',
+	'udooneo':'nm'
+}
 debug ('Board type '+boardtype);
 if (!boardtype)
 {
@@ -737,29 +744,65 @@ packets.on ('message', function (t, p)
 							});
 						}
 					});
-					iwconfig.status (function (err, status)
+					if (nettype[boardtype] === 'iwconfig')
 					{
-						if (err)
+						debug ('iwconfig');
+						iwconfig.status (function (err, status)
 						{
-							slist ();
-						}
-						else
-						{
-							_.each (l, function (sl)
+							if (err)
 							{
-								_.each (status, function (sinterface)
+								
+							}
+							else
+							{
+								_.each (l, function (sl)
 								{
-									if (sl.i === sinterface.interface)
+									_.each (status, function (sinterface)
 									{
-										sl.t = 'w';
-										sl.s = sinterface.ssid;
-										sl.q = sinterface.quality;
-									}
+										if (sl.i === sinterface.interface)
+										{
+											sl.t = 'w';
+											sl.s = sinterface.ssid;
+											sl.q = sinterface.quality;
+										}
+									});
 								});
-							});
+							}
 							sendinterfaces ();
-						}
-					});
+						});
+					}
+					else
+					if (nettype[boardtype] === 'nm')
+					{
+						debug ('nm');
+						nm.status (function (error, devices)
+						{
+							if (error)
+							{
+
+							}
+							else
+							{
+								_.each (l, function (sl)
+								{
+									_.each (devices, function (dinterface)
+									{
+										if (sl.i === dinterface.interface)
+										{
+											sl.t = 'w';
+											sl.s = dinterface.ssid;
+											sl.q = dinterface.quality;
+										}
+									});
+								});
+							}
+							sendinterfaces();
+						});
+					}
+					else
+					{
+						sendinterfaces();
+					}
 				}
 			});
 		};
@@ -768,7 +811,7 @@ packets.on ('message', function (t, p)
 			var networks = [];
 			var sudo = settings.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', 's', p.i];
+			var params = ['network.js', nettype[boardtype], 's', p.i];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
@@ -813,7 +856,7 @@ packets.on ('message', function (t, p)
 			var networks = [];
 			var sudo = settings.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', 'disconnect', p.i];
+			var params = ['network.js', nettype[boardtype], 'disconnect', p.i];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
@@ -829,7 +872,7 @@ packets.on ('message', function (t, p)
 			var networks = [];
 			var sudo = settings.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', 'connect', p.i, p.s, p.p];
+			var params = ['network.js', nettype[boardtype], 'connect', p.i, p.s, p.p];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
