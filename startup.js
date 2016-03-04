@@ -206,7 +206,13 @@ serial.open (function (error)
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network, v:version});
+	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
+}
+
+function sendVersion ()
+{
+	debug ('Sending version');
+	send ('v', {v:version});
 }
 
 serial.on ('error', function (error)
@@ -969,6 +975,7 @@ packets.on ('message', function (t, p)
 	if (t === 'i')
 	{
 		status ();
+		sendVersion ();
 	}
 	else
 	// Run
@@ -1087,6 +1094,7 @@ function receivedDataPacket (data)
 								login = true;
 								send ('', null);
 								status ();
+								// sendVersion ();
 							}
 							else 
 							{
