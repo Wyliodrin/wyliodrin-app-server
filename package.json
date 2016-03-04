@@ -1,7 +1,8 @@
 {
   "name": "wyliodrin-app-server",
-  "version": "0.0.0",
+  "version": "1.0.2",
   "main": "startup.js",
+  "repository":"https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
     "msgpack-lite": "~0.1.15",
     "pty.js": "~0.3.0",

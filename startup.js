@@ -11,6 +11,8 @@ var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
 
+var version = require ('./package.json').version;
+
 var pam = require ('authenticate-pam');
 
 var SOCKET = 1;
@@ -122,7 +124,7 @@ var isConnected = false;
 var EventEmitter = require ('events').EventEmitter;
 
 debug ('Reading board type');
-var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype');
+var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
 var nettype = 
 {
 	'raspberrypi':'iwconfig',
@@ -134,6 +136,12 @@ if (!boardtype)
 	console.log ('Unknown board type');
 	process.exit (-10);
 }
+
+var env = {
+	HOME: '/wyliodrin',
+	wyliodrin_board: boardtype,
+	wyliodrin_version: version
+};
 
 debug ('Loading settings from /etc/wyliodrin/settings_'+boardtype+'.json');
 var settings = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
@@ -198,7 +206,7 @@ serial.open (function (error)
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
+	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network, v:version});
 }
 
 serial.on ('error', function (error)
@@ -360,7 +368,7 @@ function openShell (p)
 		  cols: p.c,
 		  rows: p.r,
 		  cwd: '/wyliodrin',
-		  env: _.assign (process.env, {HOME:'/wyliodrin'})
+		  env: _.assign (process.env, env)
 		});
 
 		shell.on('data', function(data) {
@@ -500,7 +508,7 @@ function runProject (p)
 						  cols: p.c,
 						  rows: p.r,
 						  cwd: dir,
-						  env: _.assign (process.env, {HOME:'/wyliodrin', wyliodrin_project:"app-project"})
+						  env: _.assign (process.env, env, {wyliodrin_project:"app-project"})
 						});
 
 						projectpid = project.pid;
@@ -637,6 +645,36 @@ packets.on ('message', function (t, p)
 				clearInterval (taskManager);
 				taskManager = null;
 			}
+		}
+	}
+	else
+	// Update
+	if (t === 'u')
+	{
+		if (p.a === 'i')
+		{
+			debug ('Update wyliodrin-server');
+			var script = './update-server.sh';
+			var params = [];
+			var sudo = settings.run.split(' ');
+			if (sudo[0]==='sudo')
+			{
+				params.splice (0, 0, '-E', script);
+				manager = 'sudo';
+			}
+			var runscript = child_process.spawn (manager, params, {env: env});
+			runscript.stdout.on ('data', function (data)
+			{
+				send ('u', {a:'i', out:data.toString()});
+			});
+			runscript.stderr.on ('data', function (data)
+			{
+				send ('u', {a:'i', err:data.toString()});
+			});
+			runscript.on ('close', function (error)
+			{
+				send ('u', {a:'i', e:error});
+			});
 		}
 	}
 	else
