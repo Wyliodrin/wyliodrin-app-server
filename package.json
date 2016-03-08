@@ -1,7 +1,8 @@
 {
   "name": "wyliodrin-app-server",
-  "version": "0.0.0",
+  "version": "1.0.2",
   "main": "startup.js",
+  "repository":"https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
     "msgpack-lite": "~0.1.15",
     "pty.js": "~0.3.0",
@@ -11,7 +12,8 @@
     "async": "~1.5.2",
     "lodash": "~4.1.0",
     "wireless-tools": "~0.15.0",
-    "tcp-ping": "~0.1.1"
+    "tcp-ping": "~0.1.1",
+    "authenticate-pam": "~1.0.0"
   },
   "devDependencies": {},
   "scripts": {
