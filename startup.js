@@ -9,11 +9,11 @@ var _ = require ('lodash');
 var fs = require ('fs');
 var async = require ('async');
 var runAnotherProject = null;
-var redis = require ("redis");
+// var redis = require ("redis");
 
 var version = require ('./package.json').version;
 
-var pam = require ('authenticate-pam');
+var pam = null;//require ('authenticate-pam');
 
 var SOCKET = 1;
 var SERIAL = 2;
@@ -53,8 +53,35 @@ var networkPing = function ()
 
 networkPing ();
 
-var subscriber = redis.createClient ();
-var client = redis.createClient ();
+var dgram = require('dgram');
+var udpserver = dgram.createSocket('udp4');
+
+udpserver.on('error', function (err) {
+  console.log('server error: '+err.stack);
+  udpserver.close();
+});
+
+udpserver.on('message', function (msg, rinfo) {
+  var data = msg.toString().split (' ');
+  if (data.length >= 2)
+  {
+  	  var s = {};
+  	  s[data[0]] = parseFloat(data[1]);
+	  var t = data[2];
+	  sendLowPriority ('v', {t:t, s:s});
+  }
+});
+
+udpserver.on('listening', function () {
+  var address = server.address();
+  console.log('server listening '+address.address+':'+address.port);
+});
+
+udpserver.bind(7200);
+
+
+// var subscriber = redis.createClient ();
+// var client = redis.createClient ();
 
 var runmanager = {
 	'nodejs':{},
@@ -80,7 +107,7 @@ catch (e)
 }
 
 debug ('Erasing signals');
-client.ltrim ('app-project', 0, -1);
+// client.ltrim ('app-project', 0, -1);
 
 var sendingValues = false;
 var storedValues = false;
@@ -93,29 +120,29 @@ var sendLowPriorityQueue = [];
 var serialSending = false;
 var socketSending = false;
 
-subscriber.on ('error', function (error)
-{
-	console.log ('subscriber redis '+error);
-});
+// subscriber.on ('error', function (error)
+// {
+// 	console.log ('subscriber redis '+error);
+// });
 
-subscriber.subscribe ("wyliodrin-project", function (channel, count)
-{
-	debug ("Subscribed");
-});
+// subscriber.subscribe ("wyliodrin-project", function (channel, count)
+// {
+// 	debug ("Subscribed");
+// });
 
-subscriber.on ("message", function (channel, message)
-{
-	if (message.indexOf ('signal:app-project')===0)
-	{
-		var projectId = message.substring(7);
-		sendValues (projectId);
-	}
-});
+// subscriber.on ("message", function (channel, message)
+// {
+// 	if (message.indexOf ('signal:app-project')===0)
+// 	{
+// 		var projectId = message.substring(7);
+// 		sendValues (projectId);
+// 	}
+// });
 
-client.on ('error', function (error)
-{
-	console.log ('client redis '+error);
-});
+// client.on ('error', function (error)
+// {
+// 	console.log ('client redis '+error);
+// });
 
 var msgpack = require ('msgpack-lite');
 
@@ -128,7 +155,8 @@ var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
 var nettype = 
 {
 	'raspberrypi':'iwconfig',
-	'udooneo':'nm'
+	'udooneo':'nm',
+	'arduinoyun':'iwconfig'
 }
 debug ('Board type '+boardtype);
 if (!boardtype)
@@ -179,6 +207,11 @@ var board = {
 	{
 		serial:'/dev/ttyGS0',
 		firmware:'/Arduino/Arduino.ino'
+	},
+	'arduinoyun':
+	{
+		serial:'/dev/ttyATH0',
+		firmware: 'Arduino.ino'
 	}
 };
 
@@ -304,12 +337,12 @@ process.on('SIGINT', function ()
 });
 
 //catch uncaught exceptions, trace, then exit normally
-process.on('uncaughtException', function(e) 
+/*process.on('uncaughtException', function(e) 
 {
 	console.log('Uncaught Exception...');
 	console.log(e.stack);
 	process.exit(99);
-});
+});*/
 
 process.on ('exit', function ()
 {
@@ -369,7 +402,7 @@ function openShell (p)
 {
 	if (!shell)
 	{
-		shell = pty.spawn('bash', [], {
+		shell = pty.spawn('sh', [], {
 		  name: 'xterm-color',
 		  cols: p.c,
 		  rows: p.r,
@@ -379,6 +412,11 @@ function openShell (p)
 
 		shell.on('data', function(data) {
 		  	sendLowPriority ('s', {a:'k', t:data});
+		});
+		
+		shell.on ('error', function (error)
+		{
+			console.log (error);
 		});
 
 		shell.on ('exit', function ()
@@ -393,7 +431,7 @@ function openShell (p)
 
 function keysShell (keys)
 {
-	if (shell) shell.write (keys);
+	if (shell) shell.stdin.write (keys);
 }
 
 function resizeShell (cols, rows)
@@ -487,7 +525,7 @@ function runProject (p)
 	{
 		runAnotherProject = null;
 		debug ('Removing project');
-		exec ('mkdir -p '+dir+' && sudo rm -rf '+dir+'/* && mkdir -p '+dir+'/Arduino/src', function (err, stdout, stderr)
+		exec ('mkdir -p '+dir+' && rm -rf '+dir+'/* && mkdir -p '+dir+'/Arduino/src', function (err, stdout, stderr)
 		{
 			debug ('err: '+err);
 			debug ('stdout: '+stdout);
@@ -611,6 +649,7 @@ packets.on ('message', function (t, p)
 		else
 		if (p.a === 'k')
 		{
+			// console.log (shell);
 			if (shell) keysShell (p.t);
 			else send ('s', {a:'e', e:'noshell'});
 		}
@@ -1086,7 +1125,7 @@ function receivedDataPacket (data)
 						var password = m.d.password;
 						if (!username) username = '';
 						if (!password) password = '';
-						pam.authenticate (username, password, function (error)
+						/*pam.authenticate (username, password, function (error)
 						{
 							if (!error) 
 							{
@@ -1102,7 +1141,10 @@ function receivedDataPacket (data)
 								socket.end ();
 								login = false;
 							}
-						});
+						});*/
+						login = true;
+						send ('', null);
+						status ();
 					}
 				}
 				previousByte = 0;
@@ -1226,6 +1268,7 @@ function listPackagesPython (done)
 
 function _serialSend ()
 {
+	return;
 	if (serialSending === false)
 	{
 		var message = null;
@@ -1271,7 +1314,7 @@ function _serialSend ()
 	}
 	else
 	{
-		debug ('Serial already sedning');
+		debug ('Serial already sending');
 	}
 }
 
@@ -1333,7 +1376,7 @@ function _socketSend ()
 	}
 	else
 	{
-		debug ('Socket already sedning');
+		debug ('Socket already sending');
 	}
 }
 
@@ -1343,7 +1386,7 @@ function sendValues (projectId)
 	{
 		sendingValues = true;
 		debug ('Signal');
-		client.lrange (projectId, 0, 100, function (err, signals)
+		/*client.lrange (projectId, 0, 100, function (err, signals)
 		{
 			if (err)
 			{
@@ -1371,7 +1414,7 @@ function sendValues (projectId)
 			{
 				sendingValues = 0;
 			}
-		});
+		});*/
 	}
 	else
 	{

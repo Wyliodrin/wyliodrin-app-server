@@ -98,6 +98,7 @@ else if (a === 'connect')
 			{
 				if (err)
 				{
+					console.log (err);
 					process.exit (50);
 				}
 				else
