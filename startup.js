@@ -7,6 +7,7 @@ var pty = require ('pty.js');
 var child_process = require ('child_process');
 var _ = require ('lodash');
 var fs = require ('fs');
+var path = require ('path');
 var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
@@ -314,6 +315,7 @@ var server = net.createServer (function (_socket)
 		{
 			debug ('Socket error '+socket);
 			reset (SERIAL);
+			login = false;
 			socket = null;
 		});
 
@@ -321,6 +323,7 @@ var server = net.createServer (function (_socket)
 		{
 			reset (SERIAL);
 			debug ('Socket disconnect');
+			login = false;
 			socket = null;
 		})
 	}
@@ -551,9 +554,14 @@ function runProject (p)
 		{
 			sudo = '';
 		}
+		var firmwaremakefile = '';
+		if (board[boardtype].firmware_makefile !== '')
+		{
+			firmwaremakefile = ' && cp ./makefile/'+board[boardtype].firmware_makefile+' '+dir+path.dirname(board[boardtype].firmware)+'/Makefile';
+		}
 		runAnotherProject = null;
 		debug ('Removing project');
-		exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+'/Arduino/src', function (err, stdout, stderr)
+		exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
 		{
 			debug ('err: '+err);
 			debug ('stdout: '+stdout);

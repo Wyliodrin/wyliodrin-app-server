@@ -6,6 +6,7 @@ var board = {
 	{
 		serial:'/dev/ttyAMA0',
 		firmware:'/Arduino/src/Arduino.ino',
+		firmware_makefile: '',
 		signals:'redis',
 		nettype:'iwconfig',
 		shell:'bash',
@@ -15,6 +16,7 @@ var board = {
 	{
 		serial:'/dev/ttyGS0',
 		firmware:'/Arduino/Arduino.ino',
+		firmware_makefile: '',
 		signals:'redis',
 		nettype:'nm',
 		shell:'bash',
@@ -24,6 +26,7 @@ var board = {
 	{
 		serial:null,
 		firmware:'/Arduino/Arduino.ino',
+		firmware_makefile: 'arduinoyun.mk',
 		signals:'udp',
 		nettype:'iwconfig',
 		shell:'sh',
