@@ -201,7 +201,7 @@ var board = {
 	'raspberrypi':
 	{
 		serial:'/dev/ttyAMA0',
-		firmware:'/Arduino/src/Arduino.ino'
+		firmware:'/Arduino/src/Arduino.ino',
 	},
 	'udooneo':
 	{
@@ -210,31 +210,65 @@ var board = {
 	},
 	'arduinoyun':
 	{
-		serial:'/dev/ttyATH0',
+		serial:null,
 		firmware: 'Arduino.ino'
 	}
 };
 
-var serial = new SerialPort (board[boardtype].serial, {
-		baudrate: config_file.serialbaudrate || 115200,
-	}, false);
+var serial = null;
 
-serial.open (function (error)
+if (board[boardtype].serial)
 {
-	if (!error)
+	serial = new SerialPort (board[boardtype].serial, {
+			baudrate: config_file.serialbaudrate || 115200,
+		}, false);
+
+	serial.open (function (error)
 	{
-		debug ('Serial connected');
-		isConnected = true;
-		send ('', null);
-		send ('ping', null);
-		status ();
-	}
-	else
+		if (!error)
+		{
+			debug ('Serial connected');
+			isConnected = true;
+			send ('', null);
+			send ('ping', null);
+			status ();
+		}
+		else
+		{
+			console.log (error);
+			// process.exit (-20);
+		}	
+	});
+
+	serial.on ('error', function (error)
 	{
+		debug ('Serial port error '+error);
 		console.log (error);
-		process.exit (-20);
-	}	
-});
+		// process.exit (-20);
+	});
+
+	serial.on ('data', function (data)
+	{
+		if (socket !== null) 
+		{
+			debug ('Serial data, socket');
+			socket.end ();
+			reset (SERIAL);
+		}
+		// console.log (data.length);
+		// console.log (data.toString ());
+		for (var pos = 0; pos < data.length; pos++)
+		{
+			// console.log (data[pos]);
+			receivedDataPacket (data[pos]);
+		}
+	});
+	reset (SERIAL);
+}
+else
+{
+	reset (SOCKET);
+}
 
 function status ()
 {
@@ -248,33 +282,7 @@ function sendVersion ()
 	send ('v', {v:version});
 }
 
-serial.on ('error', function (error)
-{
-	debug ('Serial port error '+error);
-	console.log (error);
-	process.exit (-20);
-});
-
 var timer = 50;
-
-reset (SERIAL);
-
-serial.on ('data', function (data)
-{
-	if (socket !== null) 
-	{
-		debug ('Serial data, socket');
-		socket.end ();
-		reset (SERIAL);
-	}
-	// console.log (data.length);
-	// console.log (data.toString ());
-	for (var pos = 0; pos < data.length; pos++)
-	{
-		// console.log (data[pos]);
-		receivedDataPacket (data[pos]);
-	}
-});
 
 var server = net.createServer (function (_socket)
 {
@@ -1268,53 +1276,64 @@ function listPackagesPython (done)
 
 function _serialSend ()
 {
-	return;
-	if (serialSending === false)
+	if (serial!== null)
 	{
-		var message = null;
-		if (sendQueue.length>0)
+		if (serialSending === false)
 		{
-			message = sendQueue[0];
-			sendQueue.splice (0,1);
-		}
-		else if (sendLowPriorityQueue.length>0)
-		{
-			message = sendLowPriorityQueue[0];
-			sendLowPriorityQueue.splice (0,1);
-		}
-		if (message)
-		{
-			debug ('Serial sending tag '+message.t+' data '+JSON.stringify (message.d));
-			var m = escape(msgpack.encode (message));
-			// console.log (msgpack.decode (new Buffer (m, 'base64')));
-			// console.log (m.toString ());
-			if (isConnected)
+			var message = null;
+			if (sendQueue.length>0)
 			{
-				serialSending = true;
-				serial.write (m, function (err, result)
-				{
-					if (!err)
-					{
-						debug ('Serial sent '+m.length+' bytes');
-					}
-					else 
-					{
-						debug ('Serial send error '+m);
-						console.log (err);
-					}
-				});
-				serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
-				{
-					serialSending = false;
-					_serialSend ();
-					// console.log (err);
-				});
+				message = sendQueue[0];
+				sendQueue.splice (0,1);
 			}
+			else if (sendLowPriorityQueue.length>0)
+			{
+				message = sendLowPriorityQueue[0];
+				sendLowPriorityQueue.splice (0,1);
+			}
+			if (message)
+			{
+				debug ('Serial sending tag '+message.t+' data '+JSON.stringify (message.d));
+				var m = escape(msgpack.encode (message));
+				// console.log (msgpack.decode (new Buffer (m, 'base64')));
+				// console.log (m.toString ());
+				if (isConnected)
+				{
+					serialSending = true;
+					serial.write (m, function (err, result)
+					{
+						if (!err)
+						{
+							debug ('Serial sent '+m.length+' bytes');
+						}
+						else 
+						{
+							debug ('Serial send error '+m);
+							console.log (err);
+						}
+					});
+					serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+					{
+						serialSending = false;
+						_serialSend ();
+						// console.log (err);
+					});
+				}
+				else
+				{
+					debug ('Serial ignore packet');
+					_serialSend ();
+				}
+			}
+		}
+		else
+		{
+			debug ('Serial already sending');
 		}
 	}
 	else
 	{
-		debug ('Serial already sending');
+		debug ('Serial uninitialised');
 	}
 }
 
@@ -1339,38 +1358,35 @@ function _socketSend ()
 			var m = escape(msgpack.encode (message));
 			// console.log (msgpack.decode (new Buffer (m, 'base64')));
 			// console.log (m.toString ());
-			if (isConnected)
+			if (login)
 			{
-				if (login)
+				socketSending = true;
+				socket.write (m, function (err)
 				{
-					socketSending = true;
-					socket.write (m, function (err)
+					if (!err)
 					{
-						if (!err)
-						{
-							debug ('Socket sent '+m.length+' bytes');
-						}
-						else 
-						{
-							debug ('Socket send error '+m);
-							console.log (err);
-						}
-					});
-					socket.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+						debug ('Socket sent '+m.length+' bytes');
+					}
+					else 
 					{
-						socketSending = false;
-						_socketSend ();
-						// console.log (err);
-					});
-				}
-				else
+						debug ('Socket send error '+m);
+						console.log (err);
+					}
+				});
+				socket.write (BUFFER_PACKET_SEPARATOR, function (err, result)
 				{
-					debug ('Ignore packet')
-					process.nextTick (function ()
-					{
-						_socketSend ();
-					});
-				}
+					socketSending = false;
+					_socketSend ();
+					// console.log (err);
+				});
+			}
+			else
+			{
+				debug ('Socket ignore packet')
+				process.nextTick (function ()
+				{
+					_socketSend ();
+				});
 			}
 		}
 	}
