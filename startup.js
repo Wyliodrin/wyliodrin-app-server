@@ -11,9 +11,55 @@ var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
 
+/* loading board setup */
+
+var board = require ('./board.js');
+
+debug ('Reading board type');
+var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
+
+debug ('Board type '+boardtype);
+if (!boardtype)
+{
+	console.log ('Unknown board type');
+	process.exit (-10);
+}
+
+var env = {
+	HOME: '/wyliodrin',
+	wyliodrin_board: boardtype,
+	wyliodrin_version: version
+};
+
+debug ('Loading settings from /etc/wyliodrin/settings_'+boardtype+'.json');
+var SETTINGS = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
+
+var CONFIG_FILE = {};
+
+try
+{
+	require (SETTINGS.CONFIG_FILE);
+}
+catch (e)
+{
+	debug ('wyliodrin.json missing, standard setup')
+	CONFIG_FILE.jid = '';
+}
+
+/* ********************************* */
+
 var version = require ('./package.json').version;
 
-var pam = require ('authenticate-pam');
+var pam = null;
+
+try
+{
+	require ('authenticate-pam');
+}
+catch (e)
+{
+	debug ('error loading authenticate-pam');
+}
 
 var SOCKET = 1;
 var SERIAL = 2;
@@ -53,8 +99,68 @@ var networkPing = function ()
 
 networkPing ();
 
-var subscriber = redis.createClient ();
-var client = redis.createClient ();
+/* Signals */
+
+if (board[boardtype].signals === 'redis')
+{
+	var subscriber = redis.createClient ();
+	var client = redis.createClient ();
+
+	subscriber.on ('error', function (error)
+	{
+		console.log ('subscriber redis '+error);
+	});
+
+	subscriber.subscribe ("wyliodrin-project", function (channel, count)
+	{
+		debug ("Subscribed");
+	});
+
+	subscriber.on ("message", function (channel, message)
+	{
+		if (message.indexOf ('signal:app-project')===0)
+		{
+			var projectId = message.substring(7);
+			sendValues (projectId);
+		}
+	});
+
+	client.on ('error', function (error)
+	{
+		console.log ('client redis '+error);
+	});
+
+	debug ('Erasing signals');
+	client.ltrim ('app-project', 0, -1);
+}
+
+if (board[boardtype].signals === 'udp')
+{
+	var dgram = require('dgram');
+	var udpserver = dgram.createSocket('udp4');
+	udpserver.on('error', function (err) 
+	{
+		console.log('server error: '+err.stack);
+		udpserver.close();
+	});
+	udpserver.on('message', function (msg, rinfo) 
+	{
+		var data = msg.toString().split (' ');
+		if (data.length >= 2)
+		{
+			var s = {};
+			s[data[0]] = parseFloat(data[1]);
+			var t = data[2];
+			sendLowPriority ('v', {t:t, s:s});
+		}
+	});
+	udpserver.on('listening', function () 
+	{
+		var address = server.address();
+		console.log('server listening '+address.address+':'+address.port);
+	});
+	udpserver.bind(7200);
+}
 
 var runmanager = {
 	'nodejs':{},
@@ -79,9 +185,6 @@ catch (e)
 
 }
 
-debug ('Erasing signals');
-client.ltrim ('app-project', 0, -1);
-
 var sendingValues = false;
 var storedValues = false;
 
@@ -93,75 +196,16 @@ var sendLowPriorityQueue = [];
 var serialSending = false;
 var socketSending = false;
 
-subscriber.on ('error', function (error)
-{
-	console.log ('subscriber redis '+error);
-});
-
-subscriber.subscribe ("wyliodrin-project", function (channel, count)
-{
-	debug ("Subscribed");
-});
-
-subscriber.on ("message", function (channel, message)
-{
-	if (message.indexOf ('signal:app-project')===0)
-	{
-		var projectId = message.substring(7);
-		sendValues (projectId);
-	}
-});
-
-client.on ('error', function (error)
-{
-	console.log ('client redis '+error);
-});
-
 var msgpack = require ('msgpack-lite');
 
 var isConnected = false;
 
 var EventEmitter = require ('events').EventEmitter;
 
-debug ('Reading board type');
-var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
-var nettype = 
-{
-	'raspberrypi':'iwconfig',
-	'udooneo':'nm'
-}
-debug ('Board type '+boardtype);
-if (!boardtype)
-{
-	console.log ('Unknown board type');
-	process.exit (-10);
-}
-
-var env = {
-	HOME: '/wyliodrin',
-	wyliodrin_board: boardtype,
-	wyliodrin_version: version
-};
-
-debug ('Loading settings from /etc/wyliodrin/settings_'+boardtype+'.json');
-var settings = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
-
-var config_file = {};
-
-try
-{
-	require (settings.config_file);
-}
-catch (e)
-{
-	debug ('wyliodrin.json missing, standard setup')
-	config_file.jid = '';
-}
-
-var PACKET_SEPARATOR = config_file.serialpacketseparator || 255;
-var PACKET_ESCAPE = config_file.serialpacketseparator || 0;
+var PACKET_SEPARATOR = CONFIG_FILE.serialpacketseparator || 255;
+var PACKET_ESCAPE = CONFIG_FILE.serialpacketseparator || 0;
 var BUFFER_PACKET_SEPARATOR = new Buffer([PACKET_SEPARATOR, PACKET_SEPARATOR]);
-var BUFFER_SIZE = config_file.serialbuffersize || 4096;
+var BUFFER_SIZE = CONFIG_FILE.serialbuffersize || 4096;
 var receivedFirstPacketSeparator = false;
 var login = false;
 
@@ -169,44 +213,76 @@ var receivedData = new Buffer (BUFFER_SIZE);
 var receivedDataPosition = 0;
 var previousByte = 0;
 
-var board = {
-	'raspberrypi':
-	{
-		serial:'/dev/ttyAMA0',
-		firmware:'/Arduino/src/Arduino.ino'
-	},
-	'udooneo':
-	{
-		serial:'/dev/ttyGS0',
-		firmware:'/Arduino/Arduino.ino'
-	}
-};
+var serial = null;
 
-var serial = new SerialPort (board[boardtype].serial, {
-		baudrate: config_file.serialbaudrate || 115200,
-	}, false);
-
-serial.open (function (error)
+try
 {
-	if (!error)
+	if (board[boardtype].serial !== null)
 	{
-		debug ('Serial connected');
-		isConnected = true;
-		send ('', null);
-		send ('ping', null);
-		status ();
+		serial = new SerialPort (board[boardtype].serial, {
+			baudrate: CONFIG_FILE.serialbaudrate || 115200,
+		}, false);
+
+		serial.open (function (error)
+		{
+			if (!error)
+			{
+				debug ('Serial connected');
+				isConnected = true;
+				send ('', null);
+				send ('ping', null);
+				status ();
+			}
+			else
+			{
+				console.log (error);
+				process.exit (-20);
+			}	
+		});
+
+		serial.on ('error', function (error)
+		{
+			debug ('Serial port error '+error);
+			console.log (error);
+			process.exit (-20);
+		});
+
+		serial.on ('data', function (data)
+		{
+			if (socket !== null) 
+			{
+				debug ('Serial data, socket');
+				socket.end ();
+				reset (SERIAL);
+			}
+			// console.log (data.length);
+			// console.log (data.toString ());
+			for (var pos = 0; pos < data.length; pos++)
+			{
+				// console.log (data[pos]);
+				receivedDataPacket (data[pos]);
+			}
+		});
 	}
-	else
-	{
-		console.log (error);
-		process.exit (-20);
-	}	
-});
+}
+catch (e)
+{
+	debug ('Serial '+e);
+}
+
+if (serial !== null)
+{
+	reset (SERIAL);
+}
+else
+{
+	reset (SOCKET);
+}
 
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:config_file.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
+	send ('i', {n:CONFIG_FILE.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
 }
 
 function sendVersion ()
@@ -215,33 +291,7 @@ function sendVersion ()
 	send ('v', {v:version});
 }
 
-serial.on ('error', function (error)
-{
-	debug ('Serial port error '+error);
-	console.log (error);
-	process.exit (-20);
-});
-
 var timer = 50;
-
-reset (SERIAL);
-
-serial.on ('data', function (data)
-{
-	if (socket !== null) 
-	{
-		debug ('Serial data, socket');
-		socket.end ();
-		reset (SERIAL);
-	}
-	// console.log (data.length);
-	// console.log (data.toString ());
-	for (var pos = 0; pos < data.length; pos++)
-	{
-		// console.log (data[pos]);
-		receivedDataPacket (data[pos]);
-	}
-});
 
 var server = net.createServer (function (_socket)
 {
@@ -281,11 +331,11 @@ var server = net.createServer (function (_socket)
 	}
 });
 
-server.listen (config_file.server || 7000, function (err)
+server.listen (CONFIG_FILE.server || 7000, function (err)
 {
-	var sudo = settings.run.split(' ');
+	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 'p', server.address().port];
+	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
@@ -313,9 +363,9 @@ process.on('uncaughtException', function(e)
 
 process.on ('exit', function ()
 {
-	var sudo = settings.run.split(' ');
+	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 's'];
+	var params = ['publish.js', 's', board[boardtype].avahi];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
@@ -369,12 +419,19 @@ function openShell (p)
 {
 	if (!shell)
 	{
-		shell = pty.spawn('bash', [], {
+		shell = pty.spawn(board[boardtype].shell, [], {
 		  name: 'xterm-color',
 		  cols: p.c,
 		  rows: p.r,
 		  cwd: '/wyliodrin',
 		  env: _.assign (process.env, env)
+		});
+
+		shell.on ('error', function (error)
+		{
+			send ('s', {a:'k', e:error});
+			send ('s', {a:'k', t:'Shell closed\n'});
+			shell = null;
 		});
 
 		shell.on('data', function(data) {
@@ -405,7 +462,7 @@ function stopProject ()
 {
 	if (projectpid !== 0)
 	{
-		child_process.exec (settings.stop+' '+projectpid);
+		child_process.exec (SETTINGS.stop+' '+projectpid);
 		projectpid = 0;
 		fs.unlink (PROJECT_PID_TEMP);
 		if (project === null) status ();
@@ -435,7 +492,7 @@ function processes (list)
 function kill (pid, done)
 {
 	//console.log (networkConfig.stop+' '+pid);
-    child_process.exec (settings.stop+' '+pid, function (error, stdout, stderr)
+    child_process.exec (SETTINGS.stop+' '+pid, function (error, stdout, stderr)
     {
 
     	//console.log(error);
@@ -469,7 +526,7 @@ function listprocesse (psls, pslist)
 
 function runProject (p)
 {
-	var dir = settings.build_file+'/app_project';
+	var dir = SETTINGS.build_file+'/app_project';
 	var exec = child_process.exec;
 	var ext = 'js';
 	if (p.l === 'python') ext = 'py';
@@ -485,9 +542,18 @@ function runProject (p)
 	}
 	else
 	{
+		var sudo = SETTINGS.run.split(' ');
+		if (sudo[0]==='sudo')
+		{
+			sudo = 'sudo';
+		}
+		else
+		{
+			sudo = '';
+		}
 		runAnotherProject = null;
 		debug ('Removing project');
-		exec ('mkdir -p '+dir+' && sudo rm -rf '+dir+'/* && mkdir -p '+dir+'/Arduino/src', function (err, stdout, stderr)
+		exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+'/Arduino/src', function (err, stdout, stderr)
 		{
 			debug ('err: '+err);
 			debug ('stdout: '+stdout);
@@ -508,7 +574,7 @@ function runProject (p)
 					}
 					else
 					{
-						var makerun = settings.run.split(' ');
+						var makerun = SETTINGS.run.split(' ');
 						project = pty.spawn(makerun[0], makerun.slice (1), {
 						  name: 'xterm-color',
 						  cols: p.c,
@@ -662,7 +728,7 @@ packets.on ('message', function (t, p)
 			debug ('Update wyliodrin-server');
 			var script = './update-server.sh';
 			var params = [];
-			var sudo = settings.run.split(' ');
+			var sudo = SETTINGS.run.split(' ');
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, '-E', script);
@@ -720,7 +786,7 @@ packets.on ('message', function (t, p)
 			if (manager.length > 0)
 			{
 				params.push (p.p);
-				var sudo = settings.run.split(' ');
+				var sudo = SETTINGS.run.split(' ');
 				if (sudo[0]==='sudo')
 				{
 					params.splice (0, 0, manager);
@@ -788,7 +854,7 @@ packets.on ('message', function (t, p)
 							});
 						}
 					});
-					if (nettype[boardtype] === 'iwconfig')
+					if (board[boardtype].nettype === 'iwconfig')
 					{
 						debug ('iwconfig');
 						iwconfig.status (function (err, status)
@@ -816,7 +882,7 @@ packets.on ('message', function (t, p)
 						});
 					}
 					else
-					if (nettype[boardtype] === 'nm')
+					if (board[boardtype].nettype === 'nm')
 					{
 						debug ('nm');
 						nm.status (function (error, devices)
@@ -853,9 +919,9 @@ packets.on ('message', function (t, p)
 		if (p.a === 's')
 		{
 			var networks = [];
-			var sudo = settings.run.split(' ');
+			var sudo = SETTINGS.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', nettype[boardtype], 's', p.i];
+			var params = ['network.js', board[boardtype].nettype, 's', p.i];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
@@ -898,9 +964,9 @@ packets.on ('message', function (t, p)
 		else if (p.a === 'd')
 		{
 			var networks = [];
-			var sudo = settings.run.split(' ');
+			var sudo = SETTINGS.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', nettype[boardtype], 'disconnect', p.i];
+			var params = ['network.js', board[boardtype].nettype, 'disconnect', p.i];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
@@ -914,9 +980,9 @@ packets.on ('message', function (t, p)
 		else if (p.a === 'c')
 		{
 			var networks = [];
-			var sudo = settings.run.split(' ');
+			var sudo = SETTINGS.run.split(' ');
 			var run = 'node';
-			var params = ['network.js', nettype[boardtype], 'connect', p.i, p.s, p.p];
+			var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
 			if (sudo[0]==='sudo')
 			{
 				params.splice (0, 0, run);
@@ -1086,23 +1152,32 @@ function receivedDataPacket (data)
 						var password = m.d.password;
 						if (!username) username = '';
 						if (!password) password = '';
-						pam.authenticate (username, password, function (error)
+						if (pam)
 						{
-							if (!error) 
+							pam.authenticate (username, password, function (error)
 							{
-								debug ('Login');
-								login = true;
-								send ('', null);
-								status ();
-								// sendVersion ();
-							}
-							else 
-							{
-								debug ('Login error');
-								socket.end ();
-								login = false;
-							}
-						});
+								if (!error) 
+								{
+									debug ('Login');
+									login = true;
+									send ('', null);
+									status ();
+									// sendVersion ();
+								}
+								else 
+								{
+									debug ('Login error');
+									socket.end ();
+									login = false;
+								}
+							});
+						}
+						else
+						{
+							login = true;
+							send ('', null);
+							status ();
+						}
 					}
 				}
 				previousByte = 0;
@@ -1226,52 +1301,67 @@ function listPackagesPython (done)
 
 function _serialSend ()
 {
-	if (serialSending === false)
+	if (serial !== null)
 	{
-		var message = null;
-		if (sendQueue.length>0)
+		if (serialSending === false)
 		{
-			message = sendQueue[0];
-			sendQueue.splice (0,1);
-		}
-		else if (sendLowPriorityQueue.length>0)
-		{
-			message = sendLowPriorityQueue[0];
-			sendLowPriorityQueue.splice (0,1);
-		}
-		if (message)
-		{
-			debug ('Serial sending tag '+message.t+' data '+JSON.stringify (message.d));
-			var m = escape(msgpack.encode (message));
-			// console.log (msgpack.decode (new Buffer (m, 'base64')));
-			// console.log (m.toString ());
-			if (isConnected)
+			var message = null;
+			if (sendQueue.length>0)
 			{
-				serialSending = true;
-				serial.write (m, function (err, result)
-				{
-					if (!err)
-					{
-						debug ('Serial sent '+m.length+' bytes');
-					}
-					else 
-					{
-						debug ('Serial send error '+m);
-						console.log (err);
-					}
-				});
-				serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
-				{
-					serialSending = false;
-					_serialSend ();
-					// console.log (err);
-				});
+				message = sendQueue[0];
+				sendQueue.splice (0,1);
 			}
+			else if (sendLowPriorityQueue.length>0)
+			{
+				message = sendLowPriorityQueue[0];
+				sendLowPriorityQueue.splice (0,1);
+			}
+			if (message)
+			{
+				debug ('Serial sending tag '+message.t+' data '+JSON.stringify (message.d));
+				var m = escape(msgpack.encode (message));
+				// console.log (msgpack.decode (new Buffer (m, 'base64')));
+				// console.log (m.toString ());
+				if (isConnected)
+				{
+					serialSending = true;
+					serial.write (m, function (err, result)
+					{
+						if (!err)
+						{
+							debug ('Serial sent '+m.length+' bytes');
+						}
+						else 
+						{
+							debug ('Serial send error '+m);
+							console.log (err);
+						}
+					});
+					serial.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+					{
+						serialSending = false;
+						_serialSend ();
+						// console.log (err);
+					});
+				}
+				else
+				{
+					debug ('Serial ignore packet');
+					process.nextTick (function ()
+					{
+						_socketSend ();
+					});
+				}
+			}
+		}
+		else
+		{
+			debug ('Serial already sending');
 		}
 	}
 	else
 	{
-		debug ('Serial already sedning');
+		debug ('Serial uninitialised');
 	}
 }
 
@@ -1296,44 +1386,41 @@ function _socketSend ()
 			var m = escape(msgpack.encode (message));
 			// console.log (msgpack.decode (new Buffer (m, 'base64')));
 			// console.log (m.toString ());
-			if (isConnected)
+			if (login)
 			{
-				if (login)
+				socketSending = true;
+				socket.write (m, function (err)
 				{
-					socketSending = true;
-					socket.write (m, function (err)
+					if (!err)
 					{
-						if (!err)
-						{
-							debug ('Socket sent '+m.length+' bytes');
-						}
-						else 
-						{
-							debug ('Socket send error '+m);
-							console.log (err);
-						}
-					});
-					socket.write (BUFFER_PACKET_SEPARATOR, function (err, result)
+						debug ('Socket sent '+m.length+' bytes');
+					}
+					else 
 					{
-						socketSending = false;
-						_socketSend ();
-						// console.log (err);
-					});
-				}
-				else
+						debug ('Socket send error '+m);
+						console.log (err);
+					}
+				});
+				socket.write (BUFFER_PACKET_SEPARATOR, function (err, result)
 				{
-					debug ('Ignore packet')
-					process.nextTick (function ()
-					{
-						_socketSend ();
-					});
-				}
+					socketSending = false;
+					_socketSend ();
+					// console.log (err);
+				});
+			}
+			else
+			{
+				debug ('Socket ignore packet')
+				process.nextTick (function ()
+				{
+					_socketSend ();
+				});
 			}
 		}
 	}
 	else
 	{
-		debug ('Socket already sedning');
+		debug ('Socket already sending');
 	}
 }
 
