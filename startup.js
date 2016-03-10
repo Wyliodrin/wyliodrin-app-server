@@ -1074,7 +1074,7 @@ packets.on ('message', function (t, p)
 	{
 		if (client)
 		{
-			client.publish ('client_communication:signal:'+p.s, p.v);
+			client.publish ('communication_client:signal:'+p.s, p.v);
 		}
 	}
 	// Ping
