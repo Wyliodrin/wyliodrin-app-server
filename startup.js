@@ -239,7 +239,6 @@ try
 			else
 			{
 				console.log (error);
-				process.exit (-20);
 			}	
 		});
 
