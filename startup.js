@@ -1074,7 +1074,7 @@ packets.on ('message', function (t, p)
 	{
 		if (client)
 		{
-			client.publish ('communication_client:signal:'+p.s, p.v);
+			client.publish ('communication_client:signal:'+p.s, JSON.stringify ({from: 'wyliodrin_app', data:p.v}));
 		}
 	}
 	// Ping
