@@ -1,7 +1,7 @@
 #!/bin/sh
 
 opkg update
-opkg install git make gcc node-serialport node-tty.js arduino-files avr-tools -d mnt
+opkg install git make gcc node-serialport node-tty.js avr-tools arduino-files -d mnt
 
 cp -R /opt/usr/lib/node_modules/tty.js/node_modules/pty.js /opt/usr/lib/node_modules
 
