@@ -55,7 +55,7 @@ var pam = null;
 
 try
 {
-	require ('authenticate-pam');
+	pam = require ('authenticate-pam');
 }
 catch (e)
 {
