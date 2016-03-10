@@ -5,7 +5,10 @@ opkg install git make node-serialport node-tty.js -d mnt
 
 cp -R /opt/usr/lib/node_modules/tty.js/node_modules/pty.js /opt/usr/lib/node_modules
 
-mkdir /wyliodrin
+mkdir /opt/wyliodrin
+
+ln -s /opt/wyliodrin /wyliodrin
+
 mkdir /wyliodrin/projects
 mkdir /wyliodrin/projects/build
 
