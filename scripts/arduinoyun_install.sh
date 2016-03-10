@@ -11,7 +11,7 @@ mkdir /wyliodrin/projects/build
 
 cd /wyliodrin
 
-git clone https://www.github.com/wyliodrin/wyliodrin-app-server
+git clone git://www.github.com/wyliodrin/wyliodrin-app-server
 cd wyliodrin-app-server
 cp scripts/arduinoyun_package.json package.json
 npm install
