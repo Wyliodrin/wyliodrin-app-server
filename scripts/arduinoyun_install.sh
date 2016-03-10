@@ -25,4 +25,7 @@ cp scripts/arduinoyun_package.json package.json
 npm install
 
 cp scripts/S99wyliodrin-app-server /etc/rc.d/
+
+cp arduinoyun/wyliodrin.py /usr/lib/python2.7
+
 reboot
