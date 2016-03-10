@@ -4,7 +4,7 @@
   "mount_file":   "/wyliodrin/projects/mnt",
   "build_file":   "/wyliodrin/projects/build",
   "shell":        "sh",
-  "run":          "make -f Makefile.raspberrypi run",
+  "run":          "make -f Makefile.arduinoyun run",
   "stop":         "kill -9",
   "poweroff":     "poweroff",
   "logout":       "/etc/wyliodrin/logs.out",
