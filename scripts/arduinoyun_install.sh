@@ -5,6 +5,10 @@ opkg install git make node-serialport node-tty.js -d mnt
 
 cp -R /opt/usr/lib/node_modules/tty.js/node_modules/pty.js /opt/usr/lib/node_modules
 
+mkdir /etc/wyliodrin
+echo -n arduinoyun > /etc/wyliodrin/boardtype
+cp scripts/settings_arduinoyun.json /etc/wyliodrin
+
 mkdir /opt/wyliodrin
 
 ln -s /opt/wyliodrin /wyliodrin
