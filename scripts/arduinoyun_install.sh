@@ -19,7 +19,7 @@ cd wyliodrin-app-server
 
 mkdir /etc/wyliodrin
 echo -n arduinoyun > /etc/wyliodrin/boardtype
-cp scripts/settings_arduinoyun.json /etc/wyliodrin
+cp setup/settings_arduinoyun.json /etc/wyliodrin
 
 cp scripts/arduinoyun_package.json package.json
 npm install
