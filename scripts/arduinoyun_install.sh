@@ -17,9 +17,9 @@ cd /wyliodrin
 git clone git://www.github.com/wyliodrin/wyliodrin-app-server
 cd wyliodrin-app-server
 
-mkdir -f /etc/wyliodrin
+mkdir /etc/wyliodrin
 echo -n arduinoyun > /etc/wyliodrin/boardtype
-ls /etc/wyliodrin/settings_arduinoyun.json &> /dev/null || cp setup/settings_arduinoyun.json /etc/wyliodrin
+cp setup/settings_arduinoyun.json /etc/wyliodrin
 
 cp scripts/arduinoyun_package.json package.json
 npm install
