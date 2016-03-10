@@ -432,8 +432,8 @@ function openShell (p)
 
 		shell.on ('error', function (error)
 		{
-			send ('s', {a:'k', e:error});
-			send ('s', {a:'k', t:'Shell closed\n'});
+			// send ('s', {a:'k', e:error});
+			// send ('s', {a:'k', t:'Shell closed\n'});
 			shell = null;
 		});
 
