@@ -247,7 +247,6 @@ try
 		{
 			debug ('Serial port error '+error);
 			console.log (error);
-			process.exit (-20);
 		});
 
 		serial.on ('data', function (data)
