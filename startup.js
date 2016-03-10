@@ -102,10 +102,12 @@ networkPing ();
 
 /* Signals */
 
+var client = null;
+
 if (board[boardtype].signals === 'redis')
 {
 	var subscriber = redis.createClient ();
-	var client = redis.createClient ();
+	client = redis.createClient ();
 
 	subscriber.on ('error', function (error)
 	{
@@ -1069,6 +1071,14 @@ packets.on ('message', function (t, p)
 		}
 	}
 	else
+	// Signal
+	if (t === 'v')
+	{
+		if (client)
+		{
+			client.publish ('client_communication:signal:'+p.s, p.v);
+		}
+	}
 	// Ping
 	if (t === 'ping')
 	{
