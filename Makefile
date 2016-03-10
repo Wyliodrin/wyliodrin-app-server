@@ -5,7 +5,7 @@ build:
 .PHONY: install
 install:
 	mkdir -p $(DESTDIR)/usr/wyliodrin/wyliodrin-app-server
-	cp -rf network.js node_modules publish.js update-server.sh nm.js package.json startup.js $(DESTDIR)/usr/wyliodrin/wyliodrin-app-server
+	cp -rf board.js network.js nm.js publish.js startup.js node_modules update-server.sh package.json $(DESTDIR)/usr/wyliodrin/wyliodrin-app-server
 	mkdir -p $(DESTDIR)/etc/supervisor/conf.d
 	cp -rf wyliodrin-app-server.conf $(DESTDIR)/etc/supervisor/conf.d
 
