@@ -12,6 +12,16 @@ var board = {
 		shell:'bash',
 		avahi:'publish'
 	},
+	'beagleboneblack':
+	{
+		serial:'/dev/ttyGS0',
+		firmware:'',
+		firmware_makefile: '',
+		signals:'redis',
+		nettype:'iwconfig',
+		shell:'bash',
+		avahi:'publish'
+	},
 	'udooneo':
 	{
 		serial:'/dev/ttyGS0',
