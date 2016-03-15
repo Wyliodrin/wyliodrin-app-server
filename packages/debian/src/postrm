@@ -19,7 +19,7 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-	/bin/mv /usr/wyliodrin/wyliodrin-app-server/ttyGS0.conf /etc/init
+	/bin/rm /etc/disable_getty_GS0
     ;;
 
     failed-upgrade)

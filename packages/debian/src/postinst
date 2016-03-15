@@ -20,7 +20,7 @@ set -e
 
 case "$1" in
     configure)
-	/bin/mv /etc/init/ttyGS0.conf /usr/wyliodrin/wyliodrin-app-server
+	/usr/bin/touch /etc/disable_getty_GS0
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
