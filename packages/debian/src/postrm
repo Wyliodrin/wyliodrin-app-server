@@ -20,7 +20,7 @@ set -e
 
 case "$1" in
     purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
-  /bin/rm /etc/disable_getty_GS0
+  /bin/rm -f /etc/disable_getty_GS0
     ;;
 
     *)
