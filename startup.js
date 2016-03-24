@@ -379,6 +379,7 @@ process.on ('exit', function ()
 
 var shell = null;
 var project = null;
+var startingProject = false;
 
 function addToBuffer (data)
 {
@@ -561,95 +562,100 @@ function runProject (p)
 		}
 		runAnotherProject = null;
 		debug ('Removing project');
-		exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
+		if (startingProject === false)
 		{
-			debug ('err: '+err);
-			debug ('stdout: '+stdout);
-			debug ('stderr: '+stdout);
-			if (stdout) send ('p', {a:'start', r:'s', s:'o', t:stdout});
-			if (stderr) send ('p', {a:'start', r:'s', s:'e', t:stderr});
-			if (err) send ('p', {a:'start', r:'e', e:err});
-			if (!err) async.series ([
-					function (done) { fs.writeFile (dir+'/main.'+ext, p.p, done); },
-					function (done) { if (p.f) fs.writeFile (dir+board[boardtype].firmware, p.f, done); else setTimeout (done); },
-					function (done) { fs.writeFile (dir+'/Makefile.'+boardtype, p.m, done); }
-				],
-				function (err, results)
-				{
-					if (err)
+			startingProject = true;
+			exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
+			{
+				stratingProject = false;
+				debug ('err: '+err);
+				debug ('stdout: '+stdout);
+				debug ('stderr: '+stdout);
+				if (stdout) send ('p', {a:'start', r:'s', s:'o', t:stdout});
+				if (stderr) send ('p', {a:'start', r:'s', s:'e', t:stderr});
+				if (err) send ('p', {a:'start', r:'e', e:err});
+				if (!err) async.series ([
+						function (done) { fs.writeFile (dir+'/main.'+ext, p.p, done); },
+						function (done) { if (p.f) fs.writeFile (dir+board[boardtype].firmware, p.f, done); else setTimeout (done); },
+						function (done) { fs.writeFile (dir+'/Makefile.'+boardtype, p.m, done); }
+					],
+					function (err, results)
 					{
-						debug ('Error writing files '+dir+' error '+err);
-					}
-					else
-					{
-						var makerun = SETTINGS.run.split(' ');
-						project = pty.spawn(makerun[0], makerun.slice (1), {
-						  name: 'xterm-color',
-						  cols: p.c,
-						  rows: p.r,
-						  cwd: dir,
-						  env: _.assign (process.env, env, {wyliodrin_project:"app-project"})
-						});
-
-						projectpid = project.pid;
-
-						fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
-
-						if (project) send ('p', {a:'start', r:'d'});
-						else send ('p', {a:'start', r:'e'});
-
-						status ();
-
-						project.on('data', function(data) {
-							if (runAnotherProject === null)
-							{
-						  		sendLowPriority ('p', {a:'k', t:data});
-						  	}
-						});
-						project.resize (p.c, p.r);
-						}
-
-						project.on ('exit', function (error)
+						if (err)
 						{
-							fs.unlink (PROJECT_PID_TEMP);
-							project = null;
-							projectpid = 0;
-							// console.log (runAnotherProject);
-							if (runAnotherProject !== null) 
-							{
-								runProject (runAnotherProject);
+							debug ('Error writing files '+dir+' error '+err);
+						}
+						else
+						{
+							var makerun = SETTINGS.run.split(' ');
+							project = pty.spawn(makerun[0], makerun.slice (1), {
+							  name: 'xterm-color',
+							  cols: p.c,
+							  rows: p.r,
+							  cwd: dir,
+							  env: _.assign (process.env, env, {wyliodrin_project:"app-project"})
+							});
+	
+							projectpid = project.pid;
+	
+							fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
+	
+							if (project) send ('p', {a:'start', r:'d'});
+							else send ('p', {a:'start', r:'e'});
+	
+							status ();
+	
+							project.on('data', function(data) {
+								if (runAnotherProject === null)
+								{
+							  		sendLowPriority ('p', {a:'k', t:data});
+							  	}
+							});
+							project.resize (p.c, p.r);
 							}
-							else 
+	
+							project.on ('exit', function (error)
 							{
-								send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
-								send ('p', {a:'stop'});
-								status ();
-							}
-						})
-				});
-			// fs.writeFile (dir+'/main.'+ext, p.p, function (err)
-			// {
-			// 	if (err)
-			// 	{
-			// 		debug ('Error writing file '+dir+'/app_project/main.'+ext);
-			// 	}
-			// 	else
-			// 	{
-			// 		project = pty.spawn('sudo', ['-E', 'node', 'main.js'], {
-			// 		  name: 'xterm-color',
-			// 		  cols: p.c,
-			// 		  rows: p.r,
-			// 		  cwd: dir+'/app_project',
-			// 		  env: process.env
-			// 		});
-
-			// 		project.on('data', function(data) {
-			// 		  	send ('r', {a:'k', t:data});
-			// 		});
-			// 		project.resize (p.c, p.r);
-			// 	}
-			// });
-		});
+								fs.unlink (PROJECT_PID_TEMP);
+								project = null;
+								projectpid = 0;
+								// console.log (runAnotherProject);
+								if (runAnotherProject !== null) 
+								{
+									runProject (runAnotherProject);
+								}
+								else 
+								{
+									send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
+									send ('p', {a:'stop'});
+									status ();
+								}
+							})
+					});
+				// fs.writeFile (dir+'/main.'+ext, p.p, function (err)
+				// {
+				// 	if (err)
+				// 	{
+				// 		debug ('Error writing file '+dir+'/app_project/main.'+ext);
+				// 	}
+				// 	else
+				// 	{
+				// 		project = pty.spawn('sudo', ['-E', 'node', 'main.js'], {
+				// 		  name: 'xterm-color',
+				// 		  cols: p.c,
+				// 		  rows: p.r,
+				// 		  cwd: dir+'/app_project',
+				// 		  env: process.env
+				// 		});
+	
+				// 		project.on('data', function(data) {
+				// 		  	send ('r', {a:'k', t:data});
+				// 		});
+				// 		project.resize (p.c, p.r);
+				// 	}
+				// });
+			});
+		}
 	}
 }
 
