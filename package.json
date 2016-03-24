@@ -1,6 +1,6 @@
 {
   "name": "wyliodrin-app-server",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "main": "startup.js",
   "repository":"https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
