@@ -567,7 +567,7 @@ function runProject (p)
 			startingProject = true;
 			exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
 			{
-				stratingProject = false;
+				startingProject = false;
 				debug ('err: '+err);
 				debug ('stdout: '+stdout);
 				debug ('stderr: '+stdout);
