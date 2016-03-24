@@ -289,7 +289,7 @@ function status ()
 function sendVersion ()
 {
 	debug ('Sending version');
-	send ('u', {v:version});
+	send ('sv', {v:version});
 }
 
 var timer = 50;
