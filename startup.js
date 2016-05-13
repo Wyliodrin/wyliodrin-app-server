@@ -1,23 +1,107 @@
 
 "use strict";
 
+function load (name)
+{
+	var library = null;
+	try
+	{
+
+	}
+	catch (e)
+	{
+		console.log ('Failed loading the library '+name);
+	}
+	return library;
+}
+
+function isWindows ()
+{
+	return (process.platform === "win32");
+}
+
+if (isWindows ()) process.env['NODE_PATH'] = process.env['APPDATA']+'\\npm\\node_modules';
+
 var SerialPort = require ('serialport').SerialPort;
 var debug = require ('debug')('wyliodin:app:server');
-var pty = require ('pty.js');
+require('debug').enable ('*');
+var pty = load ('pty.js');
+
 var child_process = require ('child_process');
+
+var EventEmitter = require ('events').EventEmitter;
+
+if (pty === null) 
+{
+	// pty = require ('ptyw.js');
+	pty = {
+		spawn: function (cmd, parameters, options)
+		{
+			var emitter = new EventEmitter ();
+			try
+			{
+				var running = child_process.spawn (cmd, parameters, options);
+				running.stdout.on ('data', function (data)
+				{
+					emitter.emit ('data', data.toString ());
+				});
+
+				running.stderr.on ('data', function (data)
+				{
+					emitter.emit ('data', data.toString ());
+				});
+
+				running.on ('error', function (error)
+				{
+					emitter.emit ('error', error);
+				});
+
+				running.on ('exit', function (code)
+				{
+					emitter.emit ('exit', code);
+				});
+				emitter.resize = function ()
+				{
+
+				};
+				emitter.write = function (data)
+				{
+					console.log (data);
+					running.stdin.write (data+'\n');
+				};
+			}
+			catch (e)
+			{
+				console.log (e.stack);
+				emitter.emit ('exit', -1, e);
+			}
+			return emitter;
+		}
+	};
+}
+
 var _ = require ('lodash');
 var fs = require ('fs');
 var path = require ('path');
 var async = require ('async');
 var runAnotherProject = null;
-var redis = require ("redis");
+var redis = load ('redis');
 
 /* loading board setup */
 
 var board = require ('./board.js');
 
 debug ('Reading board type');
-var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
+var boardtype = null;
+
+if (isWindows())
+{
+	boardtype = fs.readFileSync ('c:\\wyliodrin\\boardtype.txt').toString();
+}
+else
+{
+	boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
+}
 
 debug ('Board type '+boardtype);
 if (!boardtype)
@@ -26,14 +110,35 @@ if (!boardtype)
 	process.exit (-10);
 }
 
+if (board[boardtype].linux)
+{
+	if (isWindows())
+	{
+		board[boardtype] = board[boardtype].windows;
+	}
+	else
+	{
+		board[boardtype] = board[boardtype].windows;
+	}
+}
+
 var env = {
-	HOME: '/wyliodrin',
+	HOME: (isWindows()?'c:\\wyliodrin':'/wyliodrin'),
 	wyliodrin_board: boardtype,
 	wyliodrin_version: version
 };
 
 debug ('Loading settings from /etc/wyliodrin/settings_'+boardtype+'.json');
-var SETTINGS = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
+var SETTINGS = null;
+
+if (isWindows())
+{
+	SETTINGS = require ('c:\\wyliodrin\\settings_'+boardtype+'.json');
+}
+else
+{
+	SETTINGS = require ('/etc/wyliodrin/settings_'+boardtype+'.json');
+}
 
 var CONFIG_FILE = {};
 
@@ -43,7 +148,7 @@ try
 }
 catch (e)
 {
-	debug ('wyliodrin.json missing, standard setup')
+	debug ('wyliodrin.json missing, standard setup');
 	CONFIG_FILE.jid = '';
 }
 
@@ -51,21 +156,10 @@ catch (e)
 
 var version = require ('./package.json').version;
 
-var pam = null;
-
-try
-{
-	pam = require ('authenticate-pam');
-}
-catch (e)
-{
-	debug ('error loading authenticate-pam');
-}
+var pam = load ('authenticate-pam');
 
 var SOCKET = 1;
 var SERIAL = 2;
-
-var EventEmitter = require ('events').EventEmitter;
 
 var net = require ('net');
 
@@ -75,28 +169,39 @@ var packets = new EventEmitter ();
 
 var socket = null;
 
-var ifconfig = require ('wireless-tools/ifconfig');
-var iwconfig = require ('wireless-tools/iwconfig');
+var ifconfig = load ('wireless-tools/ifconfig');
+var iwconfig = load ('wireless-tools/iwconfig');
 
 var taskManager = null;
 var networkManager = null;
 
 var nm = require ('./nm.js');
 
-var tcpp = require ('tcp-ping');
+var tcpp = load ('tcp-ping');
 
 var networkPing = function ()
 {
-	tcpp.ping ({address:'www.google.com', attempts: 5}, function (error, host)
+	if (tcpp)
 	{
-		// console.log (error);
-		// console.log (host);
-		if (!error && !isNaN(host.avg)) network = true;
-		else network = false;
-		setTimeout (networkPing, (network?60:10)*1000);
-		status ();
-	});
-}
+		tcpp.ping ({address:'www.google.com', attempts: 5}, function (error, host)
+		{
+			// console.log (error);
+			// console.log (host);
+			if (!error && !isNaN(host.avg)) network = true;
+			else network = false;
+			setTimeout (networkPing, (network?60:10)*1000);
+			status ();
+		});
+	}
+	else
+	{
+		process.nextTick (function ()
+		{
+			network = true;
+			status ();
+		});
+	}
+};
 
 networkPing ();
 
@@ -104,7 +209,7 @@ networkPing ();
 
 var client = null;
 
-if (board[boardtype].signals === 'redis')
+if (board[boardtype].signals === 'redis' && redis)
 {
 	var subscriber = redis.createClient ();
 	client = redis.createClient ();
@@ -137,7 +242,7 @@ if (board[boardtype].signals === 'redis')
 	client.ltrim ('app-project', 0, -1);
 }
 
-if (board[boardtype].signals === 'udp')
+if (board[boardtype].signals === 'udp' || !redis)
 {
 	var dgram = require('dgram');
 	var udpserver = dgram.createSocket('udp4');
@@ -174,7 +279,16 @@ var network = false;
 
 process.title = 'wyliodrin-app-server';
 
-var PROJECT_PID_TEMP = '/tmp/.app-project';
+var PROJECT_PID_TEMP = '';
+
+if (isWindows())
+{
+	PROJECT_PID_TEMP = 'c:\\wyliodrin\\tmp\\.app-project';
+}
+else
+{
+	PROJECT_PID_TEMP = '/tmp/.app-project';
+}
 
 debug ('Reading projectpid');
 var projectpid = 0;
@@ -235,6 +349,7 @@ try
 				send ('', null);
 				send ('ping', null);
 				status ();
+				capabilities ();
 			}
 			else
 			{
@@ -280,10 +395,16 @@ else
 	reset (SOCKET);
 }
 
+function capabilities ()
+{
+	debug ('Sending capabilities');
+	send ('capabilities', {pm:true, l:board[boardtype].capabilities});
+}
+
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:CONFIG_FILE.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
+	send ('i', {n:CONFIG_FILE.jid, c:boardtype.toString(), r:projectpid!==0, i:network, p:(isWindows()?'windows':'linux')});
 }
 
 function sendVersion ()
@@ -299,6 +420,7 @@ var server = net.createServer (function (_socket)
 	if (!socket)
 	{
 		socket = _socket;
+		if (isWindows ()) socket.setTimeout (12000);
 		debug ('Socket connection');
 		reset (SOCKET);
 		socket.on ('data', function (data)
@@ -311,8 +433,18 @@ var server = net.createServer (function (_socket)
 			}
 		});
 
+		socket.on ('timeout', function ()
+		{
+			console.log ('timeout');
+			socket.destroy ();
+			debug ('Socket timeout');
+			login = false;
+			socket = null;
+		});
+
 		socket.on ('error', function ()
 		{
+			console.log ('error');
 			debug ('Socket error '+socket);
 			reset (SERIAL);
 			login = false;
@@ -321,11 +453,12 @@ var server = net.createServer (function (_socket)
 
 		socket.on ('end', function ()
 		{
+			console.log ('disconnect');
 			reset (SERIAL);
 			debug ('Socket disconnect');
 			login = false;
 			socket = null;
-		})
+		});
 	}
 	else
 	{
@@ -375,7 +508,7 @@ process.on ('exit', function ()
 		run = 'sudo';
 	}
 	child_process.execFile (run, params);
-})
+});
 
 var shell = null;
 var project = null;
@@ -446,7 +579,7 @@ function openShell (p)
 		{
 			send ('s', {a:'k', t:'Shell closed\n'});
 			shell = null;
-		})
+		});
 	}
 	shell.resize (p.c, p.r);
 }
@@ -479,7 +612,7 @@ function processes (list)
 {
     child_process.exec ('ps -eo pid,%cpu,vsz,comm,tty | tr -s \' \'', function (error, stdout, stderr)
     {
-        if (stdout.trim().length==0)
+        if (stdout.trim().length===0)
         {
         	child_process.exec ('ps | tr -s \' \'', function (error, stdout, stderr)
         	{
@@ -513,7 +646,7 @@ function listprocesse (psls, pslist)
     lines.splice (0,1);
     lines.forEach (function (process)
     {
-        if (process!='')
+        if (process!=='')
         {
             var pscolumns = process.trim().split (' ');
             var pss = {};
@@ -530,7 +663,7 @@ function listprocesse (psls, pslist)
 
 function runProject (p)
 {
-	var dir = SETTINGS.build_file+'/app_project';
+	var dir = SETTINGS.build_file+path.sep+'app_project';
 	var exec = child_process.exec;
 	var ext = 'js';
 	if (p.l === 'python') ext = 'py';
@@ -538,6 +671,10 @@ function runProject (p)
 	if (p.l === 'visual') ext = 'py';
 	else
 	if (p.l === 'shell') ext = 'sh';
+	else
+	if (p.l === 'csharp') ext = 'cs';
+	else
+	if (p.l === 'powershell') ext = 'ps1';
 	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
@@ -565,9 +702,19 @@ function runProject (p)
 		if (startingProject === false)
 		{
 			startingProject = true;
-			exec ('mkdir -p '+dir+' && '+sudo+' rm -rf '+dir+'/* && mkdir -p '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
+			var cmd = '';
+			if (isWindows())
+			{
+				cmd = 'cmd /c run.cmd ';
+			}
+			else
+			{
+				cmd = board[boardtype].shell+' run.sh ';
+			}
+			exec (cmd+dir+' "'+sudo+' " '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
 			{
 				startingProject = false;
+				console.log (err);
 				debug ('err: '+err);
 				debug ('stdout: '+stdout);
 				debug ('stderr: '+stdout);
@@ -575,9 +722,9 @@ function runProject (p)
 				if (stderr) send ('p', {a:'start', r:'s', s:'e', t:stderr});
 				if (err) send ('p', {a:'start', r:'e', e:err});
 				if (!err) async.series ([
-						function (done) { fs.writeFile (dir+'/main.'+ext, p.p, done); },
+						function (done) { fs.writeFile (dir+path.sep+'main.'+ext, p.p, done); },
 						function (done) { if (p.f) fs.writeFile (dir+board[boardtype].firmware, p.f, done); else setTimeout (done); },
-						function (done) { fs.writeFile (dir+'/Makefile.'+boardtype, p.m, done); }
+						function (done) { if (isWindows ()) {fs.writeFile (dir+path.sep+'make.cmd', p.m, done);} else { fs.writeFile (dir+path.sep+'Makefile.'+boardtype, p.m, done);} }
 					],
 					function (err, results)
 					{
@@ -630,7 +777,7 @@ function runProject (p)
 									send ('p', {a:'stop'});
 									status ();
 								}
-							})
+							});
 					});
 				// fs.writeFile (dir+'/main.'+ext, p.p, function (err)
 				// {
@@ -773,7 +920,7 @@ packets.on ('message', function (t, p)
 			{
 				if (error) send ('pm', {a: 'p', l:p.l, e: error});
 				else send ('pm', {a: 'p', l:p.l, p:packages});
-			}
+			};
 
 			if (p.l === 'nodejs') listPackagesNodejs (done);
 			else
@@ -787,7 +934,7 @@ packets.on ('message', function (t, p)
 			var params = [];
 			if (p.l === 'nodejs')
 			{
-				manager = 'npm';
+				manager = (isWindows ()?'npm.cmd':'npm');
 				if (p.a === 'i') params = ['-g', 'install'];
 				else if (p.a === 'u') params = ['-g', 'uninstall'];
 			}
@@ -964,7 +1111,7 @@ packets.on ('message', function (t, p)
 								q: lnetwork.quality
 							});
 						});
-						send ('net', {a:'s', i:p.i, n:networks})
+						send ('net', {a:'s', i:p.i, n:networks});
 						// console.log (networks);
 					}
 					catch (e)
@@ -1051,6 +1198,12 @@ packets.on ('message', function (t, p)
 			}
 		}
 	}
+	// disconnect
+	if (t === 'd')
+	{
+		socket.end ();
+	}
+	else
 	// I
 	if (t === 'i')
 	{
@@ -1184,6 +1337,7 @@ function receivedDataPacket (data)
 									login = true;
 									send ('', null);
 									status ();
+									capabilities ();
 									// sendVersion ();
 								}
 								else 
@@ -1199,6 +1353,7 @@ function receivedDataPacket (data)
 							login = true;
 							send ('', null);
 							status ();
+							capabilities ();
 						}
 					}
 				}
@@ -1244,6 +1399,7 @@ function sendLowPriority (tag, data)
 
 function send (tag, data)
 {
+	console.log (sendQueue);
 	sendQueue.push ({t: tag, d: data});
 	_send ();
 }
