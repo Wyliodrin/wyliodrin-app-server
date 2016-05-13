@@ -60,6 +60,7 @@ if (pty === null)
 				{
 					emitter.emit ('exit', code);
 				});
+				_.assign (emitter, running);
 				emitter.resize = function ()
 				{
 
@@ -110,7 +111,7 @@ if (!boardtype)
 	process.exit (-10);
 }
 
-if (board[boardtype].linux)
+if (board[boardtype].linux || board[boardtype].windows)
 {
 	if (isWindows())
 	{
@@ -118,7 +119,7 @@ if (board[boardtype].linux)
 	}
 	else
 	{
-		board[boardtype] = board[boardtype].windows;
+		board[boardtype] = board[boardtype].linux;
 	}
 }
 
@@ -493,7 +494,7 @@ process.on('SIGINT', function ()
 process.on('uncaughtException', function(e) 
 {
 	console.log('Uncaught Exception...');
-	console.log(e.stack);
+	console.log(e);
 	process.exit(99);
 });
 
@@ -599,6 +600,7 @@ function stopProject ()
 {
 	if (projectpid !== 0)
 	{
+		console.log (SETTINGS.stop+' '+projectpid);
 		child_process.exec (SETTINGS.stop+' '+projectpid);
 		projectpid = 0;
 		fs.unlink (PROJECT_PID_TEMP);
@@ -629,6 +631,7 @@ function processes (list)
 function kill (pid, done)
 {
 	//console.log (networkConfig.stop+' '+pid);
+	console.log (SETTINGS.stop+' '+pid);
     child_process.exec (SETTINGS.stop+' '+pid, function (error, stdout, stderr)
     {
 

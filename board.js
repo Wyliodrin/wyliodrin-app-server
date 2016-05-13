@@ -60,7 +60,21 @@ var board = {
 		shell:'sh',
 		avahi:'restart',
 		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true}
-	}
+	},
+	'dragonboard':
+	{
+		windows:
+		{
+			serial:'/dev/ttyAMA0',
+			firmware:'',
+			firmware_makefile: '',
+			signals:'udp',
+			nettype:'',
+			shell:'powershell.exe',
+			avahi:'publish',
+			capabilities: {'nodejs':true, 'visual':true, 'powershell':true}
+		}
+	},
 };
 
 module.exports = board;
