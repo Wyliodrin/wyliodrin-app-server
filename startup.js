@@ -538,6 +538,8 @@ function runProject (p)
 	if (p.l === 'visual') ext = 'py';
 	else
 	if (p.l === 'shell') ext = 'sh';
+	else
+	if (p.l === 'streams') ext = 'streams';
 	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
