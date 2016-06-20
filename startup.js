@@ -8,6 +8,7 @@ var child_process = require ('child_process');
 var _ = require ('lodash');
 var fs = require ('fs');
 var path = require ('path');
+var os = require ('os');
 var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
@@ -15,6 +16,20 @@ var redis = require ("redis");
 /* loading board setup */
 
 var board = require ('./board.js');
+
+debug ('Reading name');
+
+var boardname = os.hostname();
+
+try
+{
+	boardname = fs.readFileSync ('/wyliodrin/boardname').toString ();
+}
+catch (exception)
+{
+	
+}
+
 
 debug ('Reading board type');
 var boardtype = fs.readFileSync ('/etc/wyliodrin/boardtype').toString();
@@ -104,7 +119,6 @@ networkPing ();
 
 var client = null;
 
-if (board[boardtype].signals === 'redis')
 {
 	var subscriber = redis.createClient ();
 	client = redis.createClient ();
@@ -334,11 +348,11 @@ var server = net.createServer (function (_socket)
 	}
 });
 
-server.listen (CONFIG_FILE.server || 7000, function (err)
+function publish ()
 {
 	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, 'raspberrypi', boardtype];
+	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, boardname, boardtype];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
@@ -347,6 +361,11 @@ server.listen (CONFIG_FILE.server || 7000, function (err)
 	child_process.execFile (run, params, function (error, stdout, stderr)
 	{
 	});
+}
+
+server.listen (CONFIG_FILE.server || 7000, function (err)
+{
+	publish ();
 });
 
 // catch ctrl+c event and exit normally
@@ -766,6 +785,16 @@ packets.on ('message', function (t, p)
 		}
 	}
 	else
+	// Name
+	if (t === 'n')
+	{
+		if (p.n && p.n.length > 0)
+		{
+			boardname = p.n;
+			fs.writeFile ('/wyliodrin/boardname', boardname);
+			publish ();
+		}
+	}
 	// Packages
 	if (t === 'pm')
 	{
