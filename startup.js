@@ -338,7 +338,7 @@ server.listen (CONFIG_FILE.server || 7000, function (err)
 {
 	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi];
+	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, 'raspberrypi', boardtype];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
