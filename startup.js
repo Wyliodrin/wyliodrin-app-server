@@ -297,7 +297,7 @@ else
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:CONFIG_FILE.jid, c:boardtype.toString(), r:projectpid!==0, i:network});
+	send ('i', {n:boardname, c:boardtype.toString(), r:projectpid!==0, i:network});
 }
 
 function sendVersion ()
