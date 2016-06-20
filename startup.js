@@ -793,6 +793,7 @@ packets.on ('message', function (t, p)
 			boardname = p.n;
 			fs.writeFile ('/wyliodrin/boardname', boardname);
 			publish ();
+			status ();
 		}
 	}
 	// Packages
