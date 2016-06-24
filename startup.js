@@ -690,6 +690,29 @@ function keysProject (keys)
 	if (project) project.write (keys);
 }
 
+function wifi_connect (p)
+{
+	var sudo = SETTINGS.run.split(' ');
+	var run = 'node';
+	var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
+	if (sudo[0]==='sudo')
+	{
+		params.splice (0, 0, run);
+		run = 'sudo';
+	}
+	fs.writeFileSync ('/wyliodrin/wifi.json', JSON.stringify (p));
+}
+
+try
+{
+	var p = JSON.parse(fs.readFileSync ('/wyliodrin/wifi.json'));
+	wifi_connect (p);
+}
+catch (e)
+{
+	
+}
+
 packets.on ('message', function (t, p)
 {
 	debug ('Receive message with tag '+t);
@@ -1018,6 +1041,14 @@ packets.on ('message', function (t, p)
 				params.splice (0, 0, run);
 				run = 'sudo';
 			}
+			try
+			{
+				fs.unlinkSync ('/wyliodrin/wifi.json');
+			}
+			catch (e)
+			{
+				
+			}
 			child_process.execFile (run, params, function (error, stdout, stderr)
 			{
 				send ('net', {a:'s', i:p.i, e:error});
@@ -1026,14 +1057,7 @@ packets.on ('message', function (t, p)
 		else if (p.a === 'c')
 		{
 			var networks = [];
-			var sudo = SETTINGS.run.split(' ');
-			var run = 'node';
-			var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
-			if (sudo[0]==='sudo')
-			{
-				params.splice (0, 0, run);
-				run = 'sudo';
-			}
+			wifi_connect (p);
 			child_process.execFile (run, params, function (error, stdout, stderr)
 			{
 				send ('net', {a:'s', i:p.i, e:error});
