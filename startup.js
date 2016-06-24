@@ -695,12 +695,16 @@ function wifi_connect (p)
 	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
 	var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
+	fs.writeFileSync ('/wyliodrin/wifi.json', JSON.stringify (p));
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
 		run = 'sudo';
 	}
-	fs.writeFileSync ('/wyliodrin/wifi.json', JSON.stringify (p));
+	child_process.execFile (run, params, function (error, stdout, stderr)
+	{
+		send ('net', {a:'s', i:p.i, e:error});
+	});
 }
 
 try
@@ -1058,10 +1062,6 @@ packets.on ('message', function (t, p)
 		{
 			var networks = [];
 			wifi_connect (p);
-			child_process.execFile (run, params, function (error, stdout, stderr)
-			{
-				send ('net', {a:'s', i:p.i, e:error});
-			});
 		}
 		else
 		if (p.a === 'run')
