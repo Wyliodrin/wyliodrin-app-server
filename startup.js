@@ -93,6 +93,7 @@ var socket = null;
 var ifconfig = require ('wireless-tools/ifconfig');
 var iwconfig = require ('wireless-tools/iwconfig');
 
+var currentPath = '~'
 var taskManager = null;
 var networkManager = null;
 
@@ -512,6 +513,45 @@ function processes (list)
     });
 }
 
+
+function linux_ls(place,list)
+{
+	fs.readdir(place, function (err, files) 
+	{
+	    if (err) 
+	    {
+	    	list(["ERROR"]);
+	    }
+	    else
+	    {
+		    var ls=[];
+		    files.forEach (function (file)
+		    {
+		        var lss = {};
+		        lss["name"] = file;
+		        lss["size"] = fs.statSync(path.join(place,file))["size"];
+		        lss["isdir"] = fs.lstatSync(path.join(place,file)).isDirectory()
+		        lss["isfile"] = fs.lstatSync(path.join(place,file)).isFile()
+		        lss["islink"] = fs.lstatSync(path.join(place,file)).isSymbolicLink()
+		        console.log(lss);
+		        ls.push(lss);
+			});
+	    	list(ls);
+	    }
+	});
+}
+
+function get_remote_file(link,callback)
+{
+	fs.readFile(link, function read(err, data) {
+	    if (err) {
+	        throw err;
+	    }
+	    callback(data);
+	});
+}
+
+
 function kill (pid, done)
 {
 	//console.log (networkConfig.stop+' '+pid);
@@ -546,6 +586,8 @@ function listprocesse (psls, pslist)
     ps.splice (ps.length-3, 3);
     pslist (ps);
 }
+
+
 
 function runProject (p)
 {
@@ -720,6 +762,32 @@ catch (e)
 packets.on ('message', function (t, p)
 {
 	debug ('Receive message with tag '+t);
+
+	// File Explorer
+	if (t === 'fe')
+	{
+		if (p.a == "ls")
+		{
+			linux_ls (p.b,function (listoffolder)
+			{
+				send ('fe1', listoffolder);
+			});
+		}
+		if (p.a == "phd")
+		{
+			send ('fe2', process.env.HOME);
+		}
+		if (p.a == "down")
+		{
+			console.log(p.b);
+			console.log(p.c);
+			get_remote_file(path.join(p.b,p.c),function (data)
+			{
+				send ("fe3",{f:data,n:p.c});
+			});
+			
+		}
+	}
 	// Shell
 	if (t === 's')
 	{
