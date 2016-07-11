@@ -4,7 +4,7 @@
 var board = {
 	'raspberrypi':
 	{
-		serial:'/dev/ttyAMA0',
+		serial:'/dev/ttyAMA0_offline',
 		firmware:'/Arduino/src/Arduino.ino',
 		firmware_makefile: '',
 		signals:'redis',
