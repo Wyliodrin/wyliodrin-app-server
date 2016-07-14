@@ -541,6 +541,29 @@ function linux_ls(place,list)
 	});
 }
 
+function make_tree(place,callback){
+	fs.readdir(place, function (err, files) 
+	{
+	    if (err) 
+	    {
+	    	callback(["ERROR"]);
+	    }
+	    else
+	    {
+		    var ls=[];
+		    files.forEach (function (file)
+		    {
+		        var lss = {};
+		        lss["p"] = path.join(place,file);
+		        lss["d"] = fs.lstatSync(path.join(place,file)).isDirectory();
+		        //console.log(lss);
+		        ls.push(lss);
+			});
+	    	callback(ls);
+	    }
+	});
+}
+
 function get_remote_file(link,callback)
 {
 	fs.readFile(link, function read(err, data) {
@@ -779,11 +802,17 @@ packets.on ('message', function (t, p)
 		}
 		if (p.a == "down")
 		{
-			console.log(p.b);
-			console.log(p.c);
 			get_remote_file(path.join(p.b,p.c),function (data)
 			{
 				send ("fe3",{f:data,n:p.c});
+			});
+			
+		}
+		if (p.a == "tree")
+		{
+			make_tree(p.b,function (data)
+			{
+				send ("fe4",{a:data,p:p.b});
 			});
 			
 		}
