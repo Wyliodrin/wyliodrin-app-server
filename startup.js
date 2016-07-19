@@ -567,7 +567,7 @@ function get_remote_file(link,callback)
 {
 	fs.readFile(link, function read(err, data) {
 	    if (err) {
-	        throw err;
+	    	data=["ERROR"];
 	    }
 	    callback(data);
 	});
