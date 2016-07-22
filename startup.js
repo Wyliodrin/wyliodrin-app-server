@@ -530,11 +530,12 @@ function linux_ls(place,list)
 		        var lss = {};
 		        lss["name"] = file;
 		        lss["size"] = fs.statSync(path.join(place,file))["size"];
-		        lss["isdir"] = fs.lstatSync(path.join(place,file)).isDirectory();
-		        lss["isfile"] = fs.lstatSync(path.join(place,file)).isFile();
+		        lss["isdir"] = fs.statSync(path.join(place,file)).isDirectory();
+		        lss["isfile"] = fs.statSync(path.join(place,file)).isFile();
 		        lss["islink"] = fs.lstatSync(path.join(place,file)).isSymbolicLink();
 		        ls.push(lss);
 			});
+			console.log(ls);
 	    	list(ls);
 	    }
 	});
