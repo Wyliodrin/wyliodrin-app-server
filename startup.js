@@ -563,7 +563,7 @@ function make_tree(place,callback){
 	});
 }
 
-function get_remote_file(link,callback)
+function send_file(link,callback)
 {
 	fs.readFile(link, function read(err, data) {
 	    if (err) {
@@ -571,6 +571,16 @@ function get_remote_file(link,callback)
 	    }
 	    callback(data);
 	});
+}
+
+function put_file(folder,file,content,callback)
+{
+	fs.writeFile(path.join(folder,file), content, function(err) {
+    	if(err) {
+        	console.log("No upload");
+    	}
+	}); 	
+	callback();
 }
 
 
@@ -801,7 +811,7 @@ packets.on ('message', function (t, p)
 		}
 		if (p.a == "down")
 		{
-			get_remote_file(path.join(p.b,p.c),function (data)
+			send_file(path.join(p.b,p.c),function (data)
 			{
 				send ("fe3",{f:data,n:p.c});
 			});
@@ -812,6 +822,17 @@ packets.on ('message', function (t, p)
 			make_tree(p.b,function (data)
 			{
 				send ("fe4",{a:data,p:p.b});
+			});
+			
+		}
+		if (p.a == "up")
+		{
+			put_file(p.b,p.c,p.d,function ()
+			{
+				linux_ls (p.b,function (listoffolder)
+				{
+					send ('fe1', listoffolder);
+				});
 			});
 			
 		}
