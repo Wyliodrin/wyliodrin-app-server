@@ -535,7 +535,7 @@ function linux_ls(place,list)
 		        lss["islink"] = fs.lstatSync(path.join(place,file)).isSymbolicLink();
 		        ls.push(lss);
 			});
-			console.log(ls);
+			//console.log(ls);
 	    	list(ls);
 	    }
 	});
@@ -555,7 +555,7 @@ function make_tree(place,callback){
 		    {
 		        var lss = {};
 		        lss["p"] = path.join(place,file);
-		        lss["d"] = fs.lstatSync(path.join(place,file)).isDirectory();
+		        lss["d"] = fs.statSync(path.join(place,file)).isDirectory();
 		        //console.log(lss);
 		        ls.push(lss);
 			});
@@ -825,6 +825,24 @@ packets.on ('message', function (t, p)
 				send ("fe4",{a:data,p:p.b});
 			});
 			
+		}
+		if (p.a == "treeforce")
+		{
+			var parts = "/";
+			var partsinside = "/";
+			//used because foreach and function scopes do not flow lineary
+			//two variables that are the same during one iteration
+			p.b.forEach( function (dir)
+			{
+				parts = path.join(parts,dir);
+
+				make_tree(parts,function (data)
+				{
+					partsinside = path.join(partsinside,dir);
+					send ("fe5",{a:data,p:partsinside});
+				});
+
+			});	
 		}
 		if (p.a == "up")
 		{
