@@ -84,6 +84,7 @@ if (pty === null)
 var _ = require ('lodash');
 var fs = require ('fs');
 var path = require ('path');
+var os = require ('os');
 var async = require ('async');
 var runAnotherProject = null;
 var redis = load ('redis');
@@ -91,6 +92,20 @@ var redis = load ('redis');
 /* loading board setup */
 
 var board = require ('./board.js');
+
+debug ('Reading name');
+
+var boardname = os.hostname();
+
+try
+{
+	boardname = fs.readFileSync ('/wyliodrin/boardname').toString ();
+}
+catch (exception)
+{
+	
+}
+
 
 debug ('Reading board type');
 var boardtype = null;
@@ -209,6 +224,7 @@ networkPing ();
 /* Signals */
 
 var client = null;
+
 
 if (board[boardtype].signals === 'redis' && redis)
 {
@@ -468,11 +484,11 @@ var server = net.createServer (function (_socket)
 	}
 });
 
-server.listen (CONFIG_FILE.server || 7000, function (err)
+function publish ()
 {
 	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi];
+	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, boardname, boardtype];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
@@ -481,6 +497,11 @@ server.listen (CONFIG_FILE.server || 7000, function (err)
 	child_process.execFile (run, params, function (error, stdout, stderr)
 	{
 	});
+}
+
+server.listen (CONFIG_FILE.server || 7000, function (err)
+{
+	publish ();
 });
 
 // catch ctrl+c event and exit normally
@@ -678,6 +699,8 @@ function runProject (p)
 	if (p.l === 'csharp') ext = 'cs';
 	else
 	if (p.l === 'powershell') ext = 'ps1';
+	else
+	if (p.l === 'streams') ext = 'streams';
 	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
@@ -819,6 +842,33 @@ function keysProject (keys)
 	if (project) project.write (keys);
 }
 
+function wifi_connect (p)
+{
+	var sudo = SETTINGS.run.split(' ');
+	var run = 'node';
+	var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
+	fs.writeFileSync ('/wyliodrin/wifi.json', JSON.stringify (p));
+	if (sudo[0]==='sudo')
+	{
+		params.splice (0, 0, run);
+		run = 'sudo';
+	}
+	child_process.execFile (run, params, function (error, stdout, stderr)
+	{
+		send ('net', {a:'s', i:p.i, e:error});
+	});
+}
+
+try
+{
+	var p = JSON.parse(fs.readFileSync ('/wyliodrin/wifi.json'));
+	wifi_connect (p);
+}
+catch (e)
+{
+	
+}
+
 packets.on ('message', function (t, p)
 {
 	debug ('Receive message with tag '+t);
@@ -914,6 +964,17 @@ packets.on ('message', function (t, p)
 		}
 	}
 	else
+	// Name
+	if (t === 'n')
+	{
+		if (p.n && p.n.length > 0)
+		{
+			boardname = p.n;
+			fs.writeFile ('/wyliodrin/boardname', boardname);
+			publish ();
+			status ();
+		}
+	}
 	// Packages
 	if (t === 'pm')
 	{
@@ -1136,6 +1197,14 @@ packets.on ('message', function (t, p)
 				params.splice (0, 0, run);
 				run = 'sudo';
 			}
+			try
+			{
+				fs.unlinkSync ('/wyliodrin/wifi.json');
+			}
+			catch (e)
+			{
+				
+			}
 			child_process.execFile (run, params, function (error, stdout, stderr)
 			{
 				send ('net', {a:'s', i:p.i, e:error});
@@ -1144,18 +1213,7 @@ packets.on ('message', function (t, p)
 		else if (p.a === 'c')
 		{
 			var networks = [];
-			var sudo = SETTINGS.run.split(' ');
-			var run = 'node';
-			var params = ['network.js', board[boardtype].nettype, 'connect', p.i, p.s, p.p];
-			if (sudo[0]==='sudo')
-			{
-				params.splice (0, 0, run);
-				run = 'sudo';
-			}
-			child_process.execFile (run, params, function (error, stdout, stderr)
-			{
-				send ('net', {a:'s', i:p.i, e:error});
-			});
+			wifi_connect (p);
 		}
 		else
 		if (p.a === 'run')

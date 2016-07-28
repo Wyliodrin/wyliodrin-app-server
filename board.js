@@ -6,7 +6,7 @@ var board = {
 	{
 		linux:
 		{
-			serial:'/dev/ttyAMA0',
+			serial:'/dev/ttyAMA0_offline',
 			firmware:'/Arduino/src/Arduino.ino',
 			firmware_makefile: '',
 			signals:'redis',
@@ -26,7 +26,6 @@ var board = {
 			avahi:'publish',
 			capabilities: {'nodejs':true, 'visual':true, 'powershell':true}
 		}
-		
 	},
 	'beagleboneblack':
 	{
