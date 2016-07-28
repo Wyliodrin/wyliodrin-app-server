@@ -415,7 +415,7 @@ else
 function capabilities ()
 {
 	debug ('Sending capabilities');
-	send ('capabilities', {pm:true, l:board[boardtype].capabilities});
+	send ('capabilities', {pm:true, fe:true, net:true, tm:true, l:board[boardtype].capabilities});
 }
 
 function status ()
