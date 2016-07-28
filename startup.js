@@ -12,6 +12,7 @@ var os = require ('os');
 var async = require ('async');
 var runAnotherProject = null;
 var redis = require ("redis");
+var rmdir = require ("rimraf");
 
 /* loading board setup */
 
@@ -513,6 +514,21 @@ function processes (list)
     });
 }
 
+function treeforce(arr,callback)
+{
+	var parts = "/";
+
+	arr.forEach( function (dir)
+	{
+		parts = path.join(parts,dir);
+
+		make_tree(parts,function (data)
+		{
+			callback(data,parts);
+		});
+	});	
+}
+
 
 function linux_ls(place,list)
 {
@@ -542,26 +558,22 @@ function linux_ls(place,list)
 }
 
 function make_tree(place,callback){
-	fs.readdir(place, function (err, files) 
-	{
-	    if (err) 
+	try {
+		var files = fs.readdirSync(place);
+
+		var ls=[];
+	    files.forEach (function (file)
 	    {
-	    	callback(["ERROR"]);
-	    }
-	    else
-	    {
-		    var ls=[];
-		    files.forEach (function (file)
-		    {
-		        var lss = {};
-		        lss["p"] = path.join(place,file);
-		        lss["d"] = fs.statSync(path.join(place,file)).isDirectory();
-		        //console.log(lss);
-		        ls.push(lss);
-			});
-	    	callback(ls);
-	    }
-	});
+	        var lss = {};
+	        lss["p"] = path.join(place,file);
+	        lss["d"] = fs.statSync(path.join(place,file)).isDirectory();
+	        //console.log(lss);
+	        ls.push(lss);
+		});
+		callback(ls);
+	} catch (e) {
+		callback(["ERROR"]);
+	}
 }
 
 function send_file(link,callback)
@@ -576,12 +588,17 @@ function send_file(link,callback)
 
 function put_file(folder,file,content,callback)
 {
-	fs.writeFile(path.join(folder,file), content, function(err) {
-    	if(err) {
+	fs.writeFile(path.join(folder,file), content, function(err) 
+	{
+    	if(err) 
+    	{
         	console.log("No upload");
     	}
+    	else
+    	{
+    		callback();
+    	}
 	}); 	
-	callback();
 }
 
 
@@ -828,33 +845,52 @@ packets.on ('message', function (t, p)
 		}
 		if (p.a == "treeforce")
 		{
-			var parts = "/";
-			var partsinside = "/";
-			//used because foreach and function scopes do not flow lineary
-			//two variables that are the same during one iteration
-			p.b.forEach( function (dir)
+			treeforce(p.b,function (data,partsinside)
 			{
-				parts = path.join(parts,dir);
-
-				make_tree(parts,function (data)
-				{
-					partsinside = path.join(partsinside,dir);
-					send ("fe5",{a:data,p:partsinside});
-				});
-
-			});	
+				send ("fe5",{a:data,p:partsinside});
+			});
 		}
 		if (p.a == "up")
 		{
 			put_file(p.b,p.c,p.d,function ()
 			{
-				linux_ls (p.b,function (listoffolder)
-				{
-					send ('fe1', listoffolder);
-				});
+				send('fe7', {});
 			});
 			
 		}
+		if (p.a == "del")
+		{
+			try {
+				rmdir.sync(path.join(p.b,p.c));
+				send('fe7', {});
+			} catch (e) {
+				send('fe6', {a:'del',e:e.code});
+			}
+		}
+		if (p.a == "ren")
+		{
+			try {
+				fs.statSync(path.join(p.b,p.d));
+				send('fe6', {a:'ren',e:'EEXIST'});
+			} catch (e) {
+				try {
+					fs.renameSync(path.join(p.b,p.c),path.join(p.b,p.d));
+					send('fe7', {});
+				} catch (e) {
+					send('fe6', {a:'ren',e:e.code});
+				}
+			}
+		}
+		if (p.a == "newf")
+		{
+			try {
+				fs.mkdirSync(path.join(p.b,p.c),parseInt('0744',8));
+				send('fe7', {});
+			} catch (e) {
+				send('fe6', {a:'newf',e:e.code});
+			}
+		}
+			
 	}
 	// Shell
 	if (t === 's')
