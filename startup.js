@@ -723,17 +723,17 @@ function send_file(link,callback)
 	});
 }
 
-function put_file(folder,file,content,callback)
+function put_file(folder,file,content,callyes,callno)
 {
 	fs.writeFile(path.join(folder,file), content, function(err) 
 	{
     	if(err) 
     	{
-        	console.log("No upload");
+        	callno();
     	}
     	else
     	{
-    		callback();
+    		callyes();
     	}
 	}); 	
 }
@@ -1007,6 +1007,9 @@ packets.on ('message', function (t, p)
 			put_file(p.b,p.c,p.d,function ()
 			{
 				send('fe7', {});
+			}, function() 
+			{
+				send('fe6', {a:'up',e:'EACCES'})
 			});
 			
 		}
