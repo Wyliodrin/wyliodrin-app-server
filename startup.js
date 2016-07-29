@@ -23,7 +23,7 @@ function isWindows ()
 if (isWindows ()) process.env['NODE_PATH'] = process.env['APPDATA']+'\\npm\\node_modules';
 
 var SerialPort = require ('serialport').SerialPort;
-var debug = require ('debug')('wyliodin:app:server');
+var debug = require ('debug')('wyliodrin:app:server');
 require('debug').enable ('*');
 var pty = load ('pty.js');
 
@@ -67,13 +67,13 @@ if (pty === null)
 				};
 				emitter.write = function (data)
 				{
-					console.log (data);
+					//console.log (data);
 					running.stdin.write (data+'\n');
 				};
 			}
 			catch (e)
 			{
-				console.log (e.stack);
+				//console.log (e.stack);
 				emitter.emit ('exit', -1, e);
 			}
 			return emitter;
@@ -341,7 +341,7 @@ var EventEmitter = require ('events').EventEmitter;
 var PACKET_SEPARATOR = CONFIG_FILE.serialpacketseparator || 255;
 var PACKET_ESCAPE = CONFIG_FILE.serialpacketseparator || 0;
 var BUFFER_PACKET_SEPARATOR = new Buffer([PACKET_SEPARATOR, PACKET_SEPARATOR]);
-var BUFFER_SIZE = CONFIG_FILE.serialbuffersize || 4096;
+var BUFFER_SIZE = CONFIG_FILE.serialbuffersize || 8192;
 var receivedFirstPacketSeparator = false;
 var login = false;
 
@@ -723,19 +723,39 @@ function send_file(link,callback)
 	});
 }
 
-function put_file(folder,file,content,callyes,callno)
+function put_file(folder,file,content,t,end,calldone,callacces,callexist,callmore)
 {
-	fs.writeFile(path.join(folder,file), content, function(err) 
-	{
-    	if(err) 
-    	{
-        	callno();
-    	}
-    	else
-    	{
-    		callyes();
-    	}
-	}); 	
+	try {
+		if (t == 'w')
+		{
+			fs.statSync(path.join(folder,file));
+			callexist();
+		}
+		else
+		{
+			throw "append to file";
+		}
+	} catch (e) {
+		fs.appendFile(path.join(folder,file), content, function(err) 
+		{
+	    	if(err) 
+	    	{
+	        	callacces();
+	    	}
+	    	else
+	    	{
+	    		if (end)
+	    		{
+	    			calldone();
+	    		}
+	    		else
+	    		{
+	    			callmore();
+	    		}
+	    	}
+		});
+
+	}	
 }
 
 
@@ -1004,12 +1024,18 @@ packets.on ('message', function (t, p)
 		}
 		if (p.a == "up")
 		{
-			put_file(p.b,p.c,p.d,function ()
+			put_file(p.b,p.c,p.d,p.t,p.end,function ()
 			{
-				send('fe7', {});
+				send('fe7', {a:'up'});
 			}, function() 
 			{
 				send('fe6', {a:'up',e:'EACCES'})
+			}, function()
+			{
+				send('fe6', {a:'up',e:'EEXIST'});
+			}, function()
+			{
+				send('fe8', {});
 			});
 			
 		}
@@ -1017,7 +1043,7 @@ packets.on ('message', function (t, p)
 		{
 			try {
 				rmdir.sync(path.join(p.b,p.c));
-				send('fe7', {});
+				send('fe7', {a:'del'});
 			} catch (e) {
 				send('fe6', {a:'del',e:e.code});
 			}
@@ -1030,7 +1056,7 @@ packets.on ('message', function (t, p)
 			} catch (e) {
 				try {
 					fs.renameSync(path.join(p.b,p.c),path.join(p.b,p.d));
-					send('fe7', {});
+					send('fe7', {a:'ren'});
 				} catch (e) {
 					send('fe6', {a:'ren',e:e.code});
 				}
@@ -1040,7 +1066,7 @@ packets.on ('message', function (t, p)
 		{
 			try {
 				fs.mkdirSync(path.join(p.b,p.c),parseInt('0744',8));
-				send('fe7', {});
+				send('fe7', {a:'newf'});
 			} catch (e) {
 				send('fe6', {a:'newf',e:e.code});
 			}
@@ -1605,11 +1631,13 @@ function receivedDataPacket (data)
 		{
 			if (previousByte === PACKET_SEPARATOR)
 			{
+				debug ('escape found '+receivedDataPosition);
 				addToBuffer (previousByte);
 				previousByte = 0;
 			}
 			else
 			{
+				debug ('PACKET_ESCAPE found '+receivedDataPosition);
 				addToBuffer (data);
 				previousByte = data;
 			}
