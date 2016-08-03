@@ -713,13 +713,52 @@ function make_tree(place,callback){
 	}
 }
 
-function send_file(link,callback)
+
+function send_file(link,index,pksize,callyes,callacces,callnofile)
 {
-	fs.readFile(link, function read(err, data) {
-	    if (err) {
-	    	data=["ERROR"];
-	    }
-	    callback(data);
+	fs.open(link,'r', function (err, fd)
+	{
+		if (err)
+		{
+			callnofile();
+		}
+		else
+		{
+			fs.fstat(fd, function(err, stats) {
+				if (err)
+				{
+					callacces();
+				}
+				else
+				{
+					var bufferSize;
+					var end;
+					if (stats.size > index+pksize)
+					{
+						//max packet size
+						bufferSize = pksize				
+						end = false;
+					}
+					else
+					{
+						bufferSize = stats.size-index
+						end = true;
+					}
+					var buffer = new Buffer(bufferSize);
+					fs.read(fd,buffer,0,bufferSize,index,function (err, bytesRead, buffer)
+					{
+						if (err)
+						{
+							callacces();
+						}
+						else
+						{
+							callyes(buffer,index+bufferSize,end,stats.size);
+						}
+					});
+				}
+			});
+		}
 	});
 }
 
@@ -1001,9 +1040,15 @@ packets.on ('message', function (t, p)
 		}
 		if (p.a == "down")
 		{
-			send_file(path.join(p.b,p.c),function (data)
+			send_file(path.join(p.b,p.c),p.z,p.size,function (data,index,end,all)
 			{
-				send ("fe3",{f:data,n:p.c});
+				send ("fe3",{f:data,i:index,end:end,all:all});
+			}, function ()
+			{
+				send('fe6', {a:'down',e:'EACCES'})
+			}, function ()
+			{
+				send('fe6', {a:'down',e:'ENOENT'})
 			});
 			
 		}
