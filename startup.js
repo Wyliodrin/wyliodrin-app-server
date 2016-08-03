@@ -6,7 +6,7 @@ function load (name)
 	var library = null;
 	try
 	{
-
+		library = require(name);
 	}
 	catch (e)
 	{
