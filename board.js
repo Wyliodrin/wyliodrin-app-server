@@ -53,7 +53,7 @@ var board = {
 	{
 		serial:null,
 		firmware:'/Arduino/Arduino.ino',
-		firmware_makefile: 'arduinoyun.mk',
+		firmware_makefile: '',
 		signals:'udp',
 		nettype:'iwconfig',
 		shell:'sh',
