@@ -58,7 +58,7 @@ var board = {
 		nettype:'iwconfig',
 		shell:'sh',
 		avahi:'restart',
-		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true}
+		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'streams':true}
 	},
 	'dragonboard':
 	{

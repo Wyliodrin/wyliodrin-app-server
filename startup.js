@@ -22,7 +22,7 @@ function isWindows ()
 
 if (isWindows ()) process.env['NODE_PATH'] = process.env['APPDATA']+'\\npm\\node_modules';
 
-var SerialPort = require ('serialport').SerialPort;
+var SerialPort = load ('serialport').SerialPort;
 var debug = require ('debug')('wyliodrin:app:server');
 require('debug').enable ('*');
 var pty = load ('pty.js');
