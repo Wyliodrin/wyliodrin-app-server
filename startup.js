@@ -888,7 +888,7 @@ function runProject (p)
 			{
 				cmd = board[boardtype].shell+' run.sh ';
 			}
-			exec (cmd+dir+' "'+sudo+' " '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
+			exec (cmd+dir+' "'+sudo+'" '+dir+path.dirname(board[boardtype].firmware)+firmwaremakefile, function (err, stdout, stderr)
 			{
 				startingProject = false;
 				console.log (err);
