@@ -15,6 +15,11 @@ function load (name)
 	return library;
 }
 
+var LIST_PERIPHERALS = 3000;
+
+var serialPorts = [];
+var peripherals = [];
+
 function isWindows ()
 {
 	return (process.platform === "win32");
@@ -23,6 +28,38 @@ function isWindows ()
 if (isWindows ()) process.env['NODE_PATH'] = process.env['APPDATA']+'\\npm\\node_modules';
 
 var SerialPort = load ('serialport').SerialPort;
+function listPeripherals()
+{
+	// TODO a better way
+	load('serialport').list (function (err, ports)
+	{
+		if (ports.length !== serialPorts.length)
+		{
+			serialPorts = ports;
+			peripherals = [];
+			_.each (serialPorts, function (peripheral)
+			{
+				if (peripheral.vendorId && peripheral.productId)
+				{
+					peripherals.push ({
+						p: peripheral.comName,
+						s: peripheral.serialNumber,
+						vid: peripheral.vendorId,
+						pid: peripheral.productId
+					});
+				}
+			});
+			console.log (peripherals);
+			console.log (msgpack.encode (peripherals).toString ('base64'));
+			status ();
+			publish ();
+		}
+		setTimeout (listPeripherals, LIST_PERIPHERALS);
+	});
+}	
+
+listPeripherals ();
+
 var debug = require ('debug')('wyliodrin:app:server');
 require('debug').enable ('*');
 var pty = load ('pty.js');
@@ -423,7 +460,14 @@ function capabilities ()
 function status ()
 {
 	debug ('Sending status');
-	send ('i', {n:CONFIG_FILE.jid, c:boardtype.toString(), r:projectpid!==0, i:network, p:(isWindows()?'windows':'linux')});
+	send ('i', {
+			n:CONFIG_FILE.jid, 
+			c:boardtype.toString(), 
+			r:projectpid!==0, 
+			i:network, 
+			p:(isWindows()?'windows':'linux'),
+			pf:peripherals
+		});
 }
 
 function sendVersion ()
@@ -490,7 +534,7 @@ function publish ()
 {
 	var sudo = SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, boardname, boardtype];
+	var params = ['publish.js', 'p', server.address().port, board[boardtype].avahi, boardname, boardtype, msgpack.encode (peripherals).toString ('base64')];
 	if (sudo[0]==='sudo')
 	{
 		params.splice (0, 0, run);
