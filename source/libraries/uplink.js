@@ -298,7 +298,7 @@ function receivedDataPacket (data)
 			if (previousByte === PACKET_SEPARATOR)
 			{
 				var m = packet ();
-				console.log (m);
+				// console.log (m);
 				if (!socket || login)
 				{
 					packets.emit ('message', m.t, m.d);

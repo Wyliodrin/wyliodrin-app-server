@@ -2,7 +2,7 @@
 "use strict";
 
 console.log ('Loading project library');
-var debug = require ('debug')('wyliodrin:app:server:library:project');
+var debug = require ('debug')('wyliodrin:app:server:project');
 var util = require ('../../util.js');
 var fs = require ('fs');
 var uplink = require ('../uplink');
@@ -52,7 +52,7 @@ function stopProject ()
 		child_process.exec (settings.SETTINGS.stop+' '+projectpid);
 		projectpid = 0;
 		fs.unlink (PROJECT_PID_TEMP);
-		if (project === null) uplink.status ();
+		if (project === null) gadget.status ();
 	}
 }
 
@@ -147,7 +147,7 @@ function runProject (p)
 							if (project) uplink.send ('p', {a:'start', r:'d'});
 							else uplink.send ('p', {a:'start', r:'e'});
 	
-							uplink.status ();
+							gadget.status ();
 	
 							project.on('data', function(data) {
 								if (runAnotherProject === null)
@@ -172,7 +172,7 @@ function runProject (p)
 								{
 									uplink.send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
 									uplink.send ('p', {a:'stop'});
-									uplink.status ();
+									gadget.status ();
 								}
 							});
 					});
@@ -213,9 +213,9 @@ function keysProject (keys)
 	if (project) project.write (keys);
 }
 
-debug ('Registering for tag t');
+debug ('Registering for tag p');
 
-uplink.tags.on ('t', function (p)
+uplink.tags.on ('p', function (p)
 {
 	if (p.a === 'start')
 	{

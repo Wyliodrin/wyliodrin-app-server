@@ -54,7 +54,7 @@ function wifi_connect (p)
 {
 	var sudo = settings.SETTINGS.run.split(' ');
 	var run = 'node';
-	var params = ['network.js', board.nettype, 'connect', p.i, p.s, p.p];
+	var params = [path.join (__dirname, 'network.js'), board.nettype, 'connect', p.i, p.s, p.p];
 	fs.writeFileSync ('/wyliodrin/wifi.json', JSON.stringify (p));
 	if (sudo[0]==='sudo')
 	{
@@ -181,7 +181,7 @@ uplink.tags.on ('net', function (p)
 		networks = [];
 		sudo = settings.SETTINGS.run.split(' ');
 		run = 'node';
-		params = ['network.js', board.nettype, 's', p.i];
+		params = [path.join (__dirname, 'network.js'), board.nettype, 's', p.i];
 		if (sudo[0]==='sudo')
 		{
 			params.splice (0, 0, run);
@@ -226,7 +226,7 @@ uplink.tags.on ('net', function (p)
 		networks = [];
 		sudo = settings.SETTINGS.run.split(' ');
 		run = 'node';
-		params = ['network.js', board.nettype, 'disconnect', p.i];
+		params = [path.join (__dirname, 'network.js'), board.nettype, 'disconnect', p.i];
 		if (sudo[0]==='sudo')
 		{
 			params.splice (0, 0, run);
