@@ -20,6 +20,7 @@ uplink.run ();
 var peripherals = require ('./libraries/peripherals');
 var bonjour = require ('./libraries/bonjour');
 var project = require ('./libraries/project');
+var treeProject = require ('./libraries/treeProject');
 var network = require ('./libraries/network');
 var shell = require ('./libraries/shell');
 var file_explorer = require ('./libraries/file_explorer');
