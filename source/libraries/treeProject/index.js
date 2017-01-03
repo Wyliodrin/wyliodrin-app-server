@@ -58,6 +58,13 @@ function treeToFilesystem(tree,folder,ext){
 		}
 		else if (!tree[i].isdir){
 			//touch
+			if (tree[i].ismain){
+				//any name should it have, we call it main
+				var d = path.join(folder, "main");
+			}
+			else{
+				var d = path.join(folder, tree[i].name);
+			}
 			var d = path.join(folder, tree[i].name);
 			d = d + "." + ext;
 			fs.writeFile(d, tree[i].content, function(err) {
