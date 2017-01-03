@@ -22,19 +22,21 @@ var runAnotherProject = null;
 var project = null;
 var startingProject = false;
 
-treeToFilesystem(tree,folder,ext){
+function treeToFilesystem(tree,folder,ext){
 	for (var i = 0 ; i < tree.length ; i++){
+		console.log(tree[i]);
 		if (tree[i].isspecial){
 		}
 		else if (tree[i].isdir){
 			//mkdir
-			d = path.join(folder, tree[i].name);
-			fs.mkdirSync(d);
+			var d = path.join(folder, tree[i].name);
 
 			//makefile
 			if (tree[i].issoftware){
 				d = d + ".software";
-				makepath = path.join(d, "Makefile");
+				fs.mkdirSync(d);
+				var makepath = path.join(d, "Makefile");
+
 				fs.writeFile(makepath, tree[i].m, function(err) {
 				    if(err) { console.log(err) }
 				}); 
@@ -42,17 +44,21 @@ treeToFilesystem(tree,folder,ext){
 			}
 			else if (tree[i].isfirmware){
 				d = d + ".firmware";
-				makepath = path.join(d, "Makefile");
+				fs.mkdirSync(d);
+				var makepath = path.join(d, "Makefile");
+
 				fs.writeFile(makepath, tree[i].m, function(err) {
 				    if(err) { console.log(err) }
 				}); 
 			}
-
+			else{
+				fs.mkdirSync(d);
+			}
 			treeToFilesystem(tree[i].children, d, ext);
 		}
-		else if (tree[i].isfile){
+		else if (!tree[i].isdir){
 			//touch
-			d = path.join(folder, tree[i].name);
+			var d = path.join(folder, tree[i].name);
 			d = d + "." + ext;
 			fs.writeFile(d, tree[i].content, function(err) {
 			    if(err) { console.log(err) }
@@ -130,40 +136,49 @@ function runProject (p)
 			sudo = '';
 		}*/ //////////////////////////////////mai vedem
 
-		////////////////////////////am in dir folderul, in p.tree arborele
+		////////////////////////////am in dir folderul, in p.t arborele
 
 		rmdir.sync(dir);
 		fs.mkdirSync(dir);
-		treeToFilesystem(p.tree.children,dir,ext);
+
+		treeToFilesystem(p.t.children,dir,ext);
 
 
-		generalMakefile = "all:\n";
+		var generalMakefile = "all:\n";
 
 
 		//for each part of project
-		fs.readdir(dir, function(err, items) {
-			for (var i=0; i<items.length; i++) {
-				if(items[i].endsWith(".firmware")){
-					generalMakefile += ("\t+$(MAKE) -C " + items[i] + "\n");
-				}
+		var items = fs.readdirSync(dir);
+
+		for (var i = 0; i<items.length; i++) {
+			items[i] = items[i].toString();
+			if(_.endsWith(items[i], ".firmware")){
+				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
 			}
-			for (var i=0; i<items.length; i++) {
-				if(items[i].endsWith(".software")){
-					generalMakefile += ("\t+$(MAKE) -C " + items[i] + "\n");
-				}
+		}
+		for (var i=0; i<items.length; i++) {
+			if(_.endsWith(items[i], ".software")){
+				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
 			}
-		});
+		}
 
 		fs.writeFile(path.join(dir, "Makefile"), generalMakefile, function(err) {
 			if(err) { console.log(err) }
-		}); 
+		});
 
-		//////////aici am ramas de codat restul
-		var firmwaremakefile = '';
+		//now run makefile
+
+		console.log ("TOTU BINE PANA AICI");
+
+
+
+
+		/*var firmwaremakefile = '';
 		if (board.firmware_makefile !== '')
 		{
 			firmwaremakefile = ' && cp ./makefile/'+board.firmware_makefile+' '+dir+path.dirname(board.firmware)+'/Makefile';
-		}
+		}*/
+		//////////////////////////////////iar discutabil daca il folosim sa luam firmwareuri predefinite
 		runAnotherProject = null;
 		debug ('Removing project');
 		if (startingProject === false)
@@ -178,96 +193,60 @@ function runProject (p)
 			{
 				cmd = board.shell+' '+path.join (__dirname, 'run.sh')+' ';
 			}
-			exec (cmd+dir+' "'+sudo+'" '+dir+path.dirname(board.firmware)+firmwaremakefile, function (err, stdout, stderr)
+			exec (cmd, function (err, stdout, stderr)
 			{
 				startingProject = false;
-				console.log (err);
+
 				debug ('err: '+err);
 				debug ('stdout: '+stdout);
 				debug ('stderr: '+stdout);
 				if (stdout) uplink.send ('p', {a:'start', r:'s', s:'o', t:stdout});
 				if (stderr) uplink.send ('p', {a:'start', r:'s', s:'e', t:stderr});
 				if (err) uplink.send ('p', {a:'start', r:'e', e:err});
-				if (!err) async.series ([
-						function (done) { fs.writeFile (dir+path.sep+'main.'+ext, p.p, done); },
-						function (done) { if (p.f) fs.writeFile (dir+board.firmware, p.f, done); else setTimeout (done); },
-						function (done) { if (util.isWindows ()) {fs.writeFile (dir+path.sep+'make.cmd', p.m, done);} else { fs.writeFile (dir+path.sep+'Makefile.'+boardtype, p.m, done);} }
-					],
-					function (err, results)
+				
+				var makerun = settings.SETTINGS.run.split(' ');
+				project = util.pty.spawn(makerun[0], makerun.slice (1), {
+				  name: 'xterm-color',
+				  cols: p.c,
+				  rows: p.r,
+				  cwd: dir,
+				  env: _.assign (process.env, gadget.env, {wyliodrin_project:"app-project"})
+				});
+
+				projectpid = project.pid;
+
+				fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
+
+				if (project) uplink.send ('p', {a:'start', r:'d'});
+				else uplink.send ('p', {a:'start', r:'e'});
+
+				gadget.status ();
+
+				project.on('data', function(data) {
+					if (runAnotherProject === null)
 					{
-						if (err)
-						{
-							debug ('Error writing files '+dir+' error '+err);
-						}
-						else
-						{
-							var makerun = settings.SETTINGS.run.split(' ');
-							project = util.pty.spawn(makerun[0], makerun.slice (1), {
-							  name: 'xterm-color',
-							  cols: p.c,
-							  rows: p.r,
-							  cwd: dir,
-							  env: _.assign (process.env, gadget.env, {wyliodrin_project:"app-project"})
-							});
-	
-							projectpid = project.pid;
-	
-							fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
-	
-							if (project) uplink.send ('p', {a:'start', r:'d'});
-							else uplink.send ('p', {a:'start', r:'e'});
-	
-							gadget.status ();
-	
-							project.on('data', function(data) {
-								if (runAnotherProject === null)
-								{
-							  		uplink.sendLowPriority ('p', {a:'k', t:data});
-							  	}
-							});
-							project.resize (p.c, p.r);
-							}
-	
-							project.on ('exit', function (error)
-							{
-								fs.unlink (PROJECT_PID_TEMP);
-								project = null;
-								projectpid = 0;
-								// console.log (runAnotherProject);
-								if (runAnotherProject !== null) 
-								{
-									runProject (runAnotherProject);
-								}
-								else 
-								{
-									uplink.send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
-									uplink.send ('p', {a:'stop'});
-									gadget.status ();
-								}
-							});
-					});
-				// fs.writeFile (dir+'/main.'+ext, p.p, function (err)
-				// {
-				// 	if (err)
-				// 	{
-				// 		debug ('Error writing file '+dir+'/app_project/main.'+ext);
-				// 	}
-				// 	else
-				// 	{
-				// 		project = util.pty.spawn('sudo', ['-E', 'node', 'main.js'], {
-				// 		  name: 'xterm-color',
-				// 		  cols: p.c,
-				// 		  rows: p.r,
-				// 		  cwd: dir+'/app_project',
-				// 		  env: process.env
-				// 		});
-	
-				// 		project.on('data', function(data) {
-				// 		  	uplink.send ('r', {a:'k', t:data});
-				// 		});
-				// 		project.resize (p.c, p.r);
-				// 	}
-				// });
+				  		uplink.sendLowPriority ('p', {a:'k', t:data});
+				  	}
+				});
+				project.resize (p.c, p.r);
+
+				project.on ('exit', function (error)
+				{
+					fs.unlink (PROJECT_PID_TEMP);
+					project = null;
+					projectpid = 0;
+					// console.log (runAnotherProject);
+					if (runAnotherProject !== null) 
+					{
+						runProject (runAnotherProject);
+					}
+					else 
+					{
+						uplink.send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
+						uplink.send ('p', {a:'stop'});
+						gadget.status ();
+					}
+				});
 			});
 		}
 	}
