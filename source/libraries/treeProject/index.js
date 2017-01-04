@@ -157,10 +157,13 @@ function runProject (p)
 		//for each part of project
 		var items = fs.readdirSync(dir);
 
-		for (var i = 0; i<items.length; i++) {
-			items[i] = items[i].toString();
-			if(_.endsWith(items[i], ".firmware")){
-				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
+		if (!p.onlysoft)
+		{
+			for (var i = 0; i<items.length; i++) {
+				items[i] = items[i].toString();
+				if(_.endsWith(items[i], ".firmware")){
+					generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
+				}
 			}
 		}
 		for (var i=0; i<items.length; i++) {
