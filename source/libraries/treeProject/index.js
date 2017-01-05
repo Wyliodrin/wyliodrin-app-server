@@ -35,7 +35,7 @@ function treeToFilesystem(tree,folder,ext){
 			if (tree[i].issoftware){
 				d = d + ".software";
 				fs.mkdirSync(d);
-				var makepath = path.join(d, "Makefile");
+				var makepath = path.join(d, "Makefile.wyliodrin");
 
 				fs.writeFile(makepath, tree[i].m, function(err) {
 				    if(err) { console.log(err) }
@@ -45,11 +45,19 @@ function treeToFilesystem(tree,folder,ext){
 			else if (tree[i].isfirmware){
 				d = d + ".firmware";
 				fs.mkdirSync(d);
-				var makepath = path.join(d, "Makefile");
 
+				var makepath = path.join(d, "Makefile.wyliodrin");
 				fs.writeFile(makepath, tree[i].m, function(err) {
 				    if(err) { console.log(err) }
-				}); 
+				});
+
+				makepath = path.join(d, "Makefile");
+				if (tree[i].m2){
+					fs.writeFile(makepath, tree[i].m2, function(err) {
+				    	if(err) { console.log(err) }
+					});
+				}
+
 			}
 			else{
 				fs.mkdirSync(d);
@@ -60,13 +68,13 @@ function treeToFilesystem(tree,folder,ext){
 			//touch
 			if (tree[i].ismain){
 				//any name should it have, we call it main
-				var d = path.join(folder, "main");
+				var d = path.join(folder, "main"+ext); ///////////////////extensie
 			}
 			else{
 				var d = path.join(folder, tree[i].name);
 			}
 			var d = path.join(folder, tree[i].name);
-			d = d + "." + ext;
+			//d = d + "." + ext; /////////////////extensie
 			fs.writeFile(d, tree[i].content, function(err) {
 			    if(err) { console.log(err) }
 			}); 
@@ -162,13 +170,14 @@ function runProject (p)
 			for (var i = 0; i<items.length; i++) {
 				items[i] = items[i].toString();
 				if(_.endsWith(items[i], ".firmware")){
-					generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
+					generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
+					//generalMakefile += ("\tcd " + items[i] + " && make firmware && cd ..");
 				}
 			}
 		}
 		for (var i=0; i<items.length; i++) {
 			if(_.endsWith(items[i], ".software")){
-				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "'" + "\n");
+				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
 			}
 		}
 
