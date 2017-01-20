@@ -22,9 +22,8 @@ var runAnotherProject = null;
 var project = null;
 var startingProject = false;
 
-function treeToFilesystem(tree,folder,ext){
+function treeToFilesystem(tree,folder,ext,generalMakefile){
 	for (var i = 0 ; i < tree.length ; i++){
-		console.log(tree[i]);
 		if (tree[i].isspecial){
 		}
 		else if (tree[i].isdir){
@@ -43,43 +42,98 @@ function treeToFilesystem(tree,folder,ext){
 
 			}
 			else if (tree[i].isfirmware){
+				if (!tree[i].enable){
+					console.log("not enabled");
+					continue;
+				}
+				else{
+					console.log("enabled;")
+				}
 				d = d + ".firmware";
 				fs.mkdirSync(d);
 
-				var makepath = path.join(d, "Makefile.wyliodrin");
+				/*var makepath = path.join(d, "Makefile.wyliodrin");
 				fs.writeFile(makepath, tree[i].m, function(err) {
 				    if(err) { console.log(err) }
-				});
+				});*/
 
-				makepath = path.join(d, "Makefile");
-				if (tree[i].m2){
-					fs.writeFile(makepath, tree[i].m2, function(err) {
+				var here = false;
+
+				var makepath = path.join(d, "Makefile.send");
+				if (tree[i].m.s){
+					fs.writeFile(makepath, tree[i].m.s, function(err) {
+				    	if(err) { console.log(err) }
+					});
+					here = true;
+				}
+
+				makepath = path.join(d, "Makefile.compileAway");
+				if (tree[i].m.ca){
+					fs.writeFile(makepath, tree[i].m.ca, function(err) {
+				    	if(err) { console.log(err) }
+					});
+					here = false;
+				}
+
+				makepath = path.join(d, "Makefile.compileHere");
+				if (tree[i].m.ch){
+					fs.writeFile(makepath, tree[i].m.ch, function(err) {
+				    	if(err) { console.log(err) }
+					});
+					here = false;
+				}
+
+				makepath = path.join(d, "Makefile.flash");
+				if (tree[i].m.f){
+					fs.writeFile(makepath, tree[i].m.f, function(err) {
 				    	if(err) { console.log(err) }
 					});
 				}
+				generalMakefile = firmware_makefile(generalMakefile,here,d,tree[i].ftype,tree[i].fport);
 
 			}
 			else{
 				fs.mkdirSync(d);
 			}
-			treeToFilesystem(tree[i].children, d, ext);
+			generalMakefile = treeToFilesystem(tree[i].children, d, ext, generalMakefile);
 		}
 		else if (!tree[i].isdir){
 			//touch
-			if (tree[i].ismain){
-				//any name should it have, we call it main
-				var d = path.join(folder, "main"+ext); ///////////////////extensie
-			}
-			else{
-				var d = path.join(folder, tree[i].name);
-			}
 			var d = path.join(folder, tree[i].name);
-			//d = d + "." + ext; /////////////////extensie
+			
 			fs.writeFile(d, tree[i].content, function(err) {
 			    if(err) { console.log(err) }
 			}); 
 		}
 	}
+	console.log(generalMakefile);
+	return generalMakefile;
+}
+
+function firmware_makefile(generalMakefile, here, folder, board, ports)
+{
+	if (!here)
+	{
+		//compile onserver
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.send" + "\n");
+	}
+	else
+	{
+		//compile local
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.compileHere" + "\n");
+	}
+
+	if (board == "openmote")
+	{
+		_.forEach(ports, function(port){
+			generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + "\n");
+		});
+	}
+	if (board == "arduino")
+	{
+		//////////////////////////////////////////////
+	}
+	return generalMakefile;
 }
 
 
@@ -156,25 +210,13 @@ function runProject (p)
 		rmdir.sync(dir);
 		fs.mkdirSync(dir);
 
-		treeToFilesystem(p.t.children,dir,ext);
-
-
 		var generalMakefile = "all:\n";
+		generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
 
 
-		//for each part of project
+		//make the software firmware
 		var items = fs.readdirSync(dir);
 
-		if (!p.onlysoft)
-		{
-			for (var i = 0; i<items.length; i++) {
-				items[i] = items[i].toString();
-				if(_.endsWith(items[i], ".firmware")){
-					generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
-					//generalMakefile += ("\tcd " + items[i] + " && make firmware && cd ..");
-				}
-			}
-		}
 		for (var i=0; i<items.length; i++) {
 			if(_.endsWith(items[i], ".software")){
 				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
@@ -182,7 +224,7 @@ function runProject (p)
 		}
 
 		fs.writeFile(path.join(dir, "Makefile"), generalMakefile, function(err) {
-			if(err) { console.log(err) }
+			if(err) { console.log(err); }
 		});
 
 		//now run makefile
