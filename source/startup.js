@@ -28,6 +28,7 @@ var task_manager = require ('./libraries/task_manager');
 var update = require ('./libraries/update');
 var package_manager = require ('./libraries/package_manager');
 var signal = require ('./libraries/signal');
+var notebook = require ('./libraries/notebook');
 
 
 process.title = 'wyliodrin-app-server';

@@ -5,7 +5,6 @@
   "repository": "https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
     "async": "~2.1.4",
-    "authenticate-pam": "~1.0.0",
     "debug": "~2.5.2",
     "lodash": "~4.17.3",
     "msgpack-lite": "~0.1.15",
@@ -13,8 +12,13 @@
     "redis": "~2.6.3",
     "rimraf": "^2.5.4",
     "serialport": "~2.0.6",
+    "split2": "^2.1.1",
     "tcp-ping": "~0.1.1",
+    "uuid": "^3.0.1",
     "wireless-tools": "~0.18.1"
+  },
+  "optionalDependencies": {
+    "authenticate-pam": "~1.0.0"
   },
   "devDependencies": {},
   "scripts": {
