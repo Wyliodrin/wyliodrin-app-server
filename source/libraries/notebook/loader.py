@@ -4,6 +4,18 @@ import os
 import traceback
 import types
 
+import matplotlib
+matplotlib.use ('Agg')
+
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import PythonTracebackLexer
+
+
+
+wyliodrin_formatter = HtmlFormatter (noclasses = True)
+
+
 wyliodrin_types = []
 
 def wyliodrin_print_result (strtype, strvalue):
@@ -91,7 +103,9 @@ def wyliodrin_display (value):
 
 
 def wyliodrin_exception (type, value, tb):
-	os.write (4, '\n'.join (traceback.format_exception(type, value, tb)))
+	exception = ''.join (traceback.format_exception(type, value, tb))
+	exception_html = highlight (exception, PythonTracebackLexer(), wyliodrin_formatter)
+	os.write (4, exception_html)
 	os.write (4, '\n'+sys.argv[1]+'\n')
 
 sys.displayhook = wyliodrin_display
@@ -104,12 +118,15 @@ def wyliodrin_plot_type (value):
 		import matplotlib
 		import matplotlib.axes
 		import StringIO
-		if type (value) is matplotlib.axes.Subplot:
+		# print callable (value.get_figure)
+		if hasattr (value, 'get_figure') and callable (value.get_figure):
+			# print 'plot type'
 			fig = value.get_figure ()
 			imgdata = StringIO.StringIO ()
 			fig.savefig (imgdata, format='svg')
 			return ('<format \'svg\'>', imgdata.getvalue ())
-	except NameError:
+	except Exception, e:
+		print e
 		pass
 	return (None, None)
 

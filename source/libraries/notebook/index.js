@@ -24,6 +24,7 @@ var uuid = require ('uuid');
 var debug = require ('debug')('wyliodrin:app:server:notebook');
 var uplink = require ('../uplink');
 var path = require ('path');
+var _ = require ('lodash');
 
 var DATA_TYPE = 0;
 var DATA_VALUE = 1;
@@ -53,9 +54,9 @@ console.log ('Loading notebook library');
 
 function Python ()
 {
-	var regex = /^<([a-zA-Z0-9_]+)\s+\'([a-zA-Z0-9_]+)\'>$/;
+	var regex = /^<([a-zA-Z0-9_\.]+)\s+\'([a-zA-Z0-9_\.]+)\'>$/;
 	this.boundary = '================================'+uuid.v4()+'================================';
-	this.python = child_process.spawn ('python', ['-u', '-i', path.join (__dirname, 'loader.py'), this.boundary], {stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe']});
+	this.python = child_process.spawn ('python', ['-u', '-i', path.join (__dirname, 'loader.py'), this.boundary], {stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe'], 'env':_.assign (process.env, {'MPLBACKEND':'Agg'})});
 	this.pid = this.python.pid;
 	debug ('Python [%d] started', this.pid);
 	this.waiting = DATA_TYPE;
@@ -65,7 +66,7 @@ function Python ()
 	this.scripts = [];
 	this.currentScript = null;
 	this.status = LOADING;
-	this.prompt = split2(' ');	
+	this.prompt = split2(/\s+|(\r?\n)/);	
 	this.stdoutBuffer = '';
 	this.stderrBuffer = '';
 
@@ -111,6 +112,7 @@ function Python ()
 							d: this.response,
 							l: this.currentScript.label
 						});
+						this.response = null;
 					}
 					// console.log (response);
 					this.dataType = null;
@@ -127,7 +129,7 @@ function Python ()
 
 	this._exception = function _exception (data)
 	{
-		if (this.status !== STOPPED)
+		if (this.status !== STOPPED && this.currentScript)
 		{
 			if (data.toString() === this.boundary)
 			{
@@ -145,9 +147,14 @@ function Python ()
 			}
 			else
 			{
+				// console.log (data);
 				this.exceptionBuffer = this.exceptionBuffer + data + '\n';
 				// console.log (data);
 			}
+		}
+		else
+		{
+			console.log (data);
 		}
 	};
 
@@ -196,6 +203,11 @@ function Python ()
 		return this.python !== null;
 	};
 
+	this.stopped = function stopped ()
+	{
+		return this.status === STOPPED;
+	};
+
 	this._format = function _format (script)
 	{
 		var lines = script.split (/\r?\n/);
@@ -226,18 +238,29 @@ function Python ()
 						d: that.response,
 						l: that.currentScript.label
 					});
+					that.response = null;
 				}
+				uplink.send ('note', {
+						a: 'r', 
+						t: 'd',
+						l: that.currentScript.label
+					});
 			}
 			that.status = READY;
 			that._next ();
+		}
+		else if (data !== '...')
+		{
+			that.stderrBuffer = that.stderrBuffer + data + '\n';
 		}
 		// console.log (pythonStatus);
 	});
 
 	this.sendBuffer = setInterval (function ()
 	{
-		if (this.currentScript)
+		if (that.currentScript)
 		{
+			// console.log ('send output buffers');
 			if (that.stdoutBuffer.length > 0)
 			{
 				uplink.send ('note', {
@@ -245,7 +268,7 @@ function Python ()
 					t: 's',
 					s: 'o',
 					d: that.stdoutBuffer,
-					l: this.currentScript.label
+					l: that.currentScript.label
 				});
 				that.stdoutBuffer = '';
 			}
@@ -256,7 +279,7 @@ function Python ()
 					t: 's',
 					s: 'e', 
 					d: that.stderrBuffer,
-					l: this.currentScript.label
+					l: that.currentScript.label
 				});
 				that.stderrBuffer = '';
 			}
@@ -266,17 +289,21 @@ function Python ()
 	this.python.on ('exit', function (err)
 	{
 		that.status = STOPPED;
+		uplink.send ('note', {
+			a:'i',
+			r:'s'
+		});
 		debug ('Python [%d] has exited', that.pid);
 	});
 	this.python.stdout.on ('data', function (data)
 	{
 		that.stdoutBuffer = that.stdoutBuffer + data.toString ();
-		// console.log ('stdout: '+data.toString ());
+		console.log ('stdout: '+data.toString ());
 	});
 	this.python.stderr.on ('data', function (data)
 	{
 		that.prompt.write (data);
-		that.stderrBuffer = that.stderrBuffer + data;
+		// that.stderrBuffer = that.stderrBuffer + data;
 		console.log ('stderr: '+data.toString ());
 	});
 	this.python.stdio[3].pipe (split2()).on ('data', function (data)
@@ -286,7 +313,6 @@ function Python ()
 	});
 	this.python.stdio[4].pipe (split2()).on ('data', function (data)
 	{
-		// console.log ('output');
 		that._exception (data);
 	});
 }
@@ -306,19 +332,21 @@ uplink.tags.on ('note', function (p)
 	else
 	if (p.a === 'r')
 	{
-		if (!python) python = new Python ();
+		if (!python || python.stopped ()) python = new Python ();
 		if (python)
 		{
 			var l = python.evaluate (p.s, p.l);
 			uplink.send ('note', {
-				a:'d',
+				a:'r',
+				t:'r',
 				l: l
 			});
 		}
 		else
 		{
 			uplink.send ('note', {
-				a: 'e',
+				a: 'r',
+				t: 'e',
 				e: 'python is not running',
 				l: p.l
 			});
