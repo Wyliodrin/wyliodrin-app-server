@@ -93,7 +93,7 @@ function Python ()
 	this.scripts = [];
 	this.currentScript = null;
 	this.status = LOADING;
-	this.prompt = split2(/\s+|(\r?\n)/);	
+	this.prompt = split2();	
 	this.stdoutBuffer = '';
 	this.stderrBuffer = '';
 
@@ -274,6 +274,7 @@ function Python ()
 			debug ('Running script %s', this.currentScript.label);
 			this.scripts.splice (0, 1);
 			this.status = PROCESSING;
+			sendStatus ();
 			this.python.stdin.write (this._format (this.currentScript.script));
 		}
 	};
@@ -309,6 +310,7 @@ function Python ()
 			}
 			this.python = null;
 			this.status = STOPPED;
+			sendStatus ();
 		}
 	};
 
@@ -361,6 +363,7 @@ function Python ()
 					});
 			}
 			that.status = READY;
+			sendStatus ();
 			that._next ();
 		}
 		else if (data !== '...')
@@ -403,10 +406,7 @@ function Python ()
 	this.python.on ('exit', function (err)
 	{
 		that.status = STOPPED;
-		uplink.send ('note', {
-			a:'i',
-			r:'s'
-		});
+		sendStatus ();
 		debug ('Python [%d] has exited', that.pid);
 	});
 	this.python.stdout.on ('data', function (data)
@@ -434,6 +434,35 @@ function Python ()
 debug ('Registering for note tag');
 
 var python = null;
+
+function sendStatus ()
+{
+	if (python)
+	{
+		if (python.status === PROCESSING)
+		{
+			uplink.send ('note', {
+				a:'status',
+				r:'r',
+				l:python.currentScript.label
+			});
+		}
+		else
+		{
+			uplink.send ('note', {
+				a:'status',
+				r:'r'
+			});
+		}
+	}
+	else
+	{
+		uplink.send ('note', {
+			a:'status',
+			r:'s'
+		});
+	}
+}
 
 uplink.tags.on ('note', function (p)
 {
@@ -472,19 +501,9 @@ uplink.tags.on ('note', function (p)
 		if (python) python.interrupt ();
 	}
 	else
-	if (p.a === 'i')
+	if (p.a === 'status')
 	{
-		if (python)
-		{
-			
-		}
-		else
-		{
-			uplink.send ('note', {
-				a:'i',
-				s:'s'
-			});
-		}
+		sendStatus ();
 	}
 });
 

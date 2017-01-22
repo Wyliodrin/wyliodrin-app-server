@@ -117,6 +117,9 @@ def wyliodrin_exception (type, value, tb):
 sys.displayhook = wyliodrin_display
 sys.excepthook = wyliodrin_exception
 
+sys.ps1 = '>>>\n';
+sys.ps2 = '...\n';
+
 os.chdir (os.getenv ('HOME')+'/notebook')
 os.umask (002)
 
