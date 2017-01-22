@@ -4,6 +4,10 @@ import os
 import traceback
 import types
 
+import redis
+
+wyliodrin_redis = redis.StrictRedis ()
+
 import matplotlib
 matplotlib.use ('Agg')
 
@@ -22,13 +26,14 @@ def wyliodrin_print_result (strtype, strvalue):
 	if not isinstance (strtype, str):
 		strtype = repr (strtype)
 	#os.write (3, '\n================================\n')
-	os.write (3, strtype+'\n')
-	try:
-		os.write (3, strvalue)
-	except UnicodeEncodeError:
-		bytes = strvalue.encode('UTF-8', 'backslashreplace')
-		os.write(3, bytes)
-	os.write (3, '\n'+sys.argv[1]+'\n')
+	# os.write (3, strtype+'\n')
+	# try:
+	# 	os.write (3, strvalue)
+	# except UnicodeEncodeError:
+	# 	bytes = strvalue.encode('UTF-8', 'backslashreplace')
+	# 	os.write(3, bytes)
+	# os.write (3, '\n'+sys.argv[1]+'\n')
+	wyliodrin_redis.publish (sys.argv[1]+'response', strtype+'\n'+strvalue)
 
 def wyliodrin_display (value):
 	strtype = type (value)
@@ -105,13 +110,15 @@ def wyliodrin_display (value):
 def wyliodrin_exception (type, value, tb):
 	exception = ''.join (traceback.format_exception(type, value, tb))
 	exception_html = highlight (exception, PythonTracebackLexer(), wyliodrin_formatter)
-	os.write (4, exception_html)
-	os.write (4, '\n'+sys.argv[1]+'\n')
+	#os.write (4, exception_html)
+	#os.write (4, '\n'+sys.argv[1]+'\n')
+	wyliodrin_redis.publish (sys.argv[1]+'exception', exception_html)
 
 sys.displayhook = wyliodrin_display
 sys.excepthook = wyliodrin_exception
 
-os.chdir (os.getenv ('HOME'))
+os.chdir (os.getenv ('HOME')+'/notebook')
+os.umask (002)
 
 def wyliodrin_plot_type (value):
 	try:

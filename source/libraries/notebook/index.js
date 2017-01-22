@@ -25,6 +25,11 @@ var debug = require ('debug')('wyliodrin:app:server:notebook');
 var uplink = require ('../uplink');
 var path = require ('path');
 var _ = require ('lodash');
+var settings = require ('../settings');
+var fs = require ('fs');
+var mkdirp = require ('mkdirp');
+
+var redis = require ('redis');
 
 var DATA_TYPE = 0;
 var DATA_VALUE = 1;
@@ -55,8 +60,30 @@ console.log ('Loading notebook library');
 function Python ()
 {
 	var regex = /^<([a-zA-Z0-9_\.]+)\s+\'([a-zA-Z0-9_\.]+)\'>$/;
-	this.boundary = '================================'+uuid.v4()+'================================';
-	this.python = child_process.spawn ('python', ['-u', '-i', path.join (__dirname, 'loader.py'), this.boundary], {stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe'], 'env':_.assign (process.env, {'MPLBACKEND':'Agg'})});
+	this.linkredis = 'notebook='+uuid.v4()+'=';
+
+	this.sudo = false;
+
+	var cmd = 'python';
+	var args = ['-u', 
+				'-i', 
+				path.join (__dirname, 'loader.py'), 
+				this.linkredis
+			];
+
+	var sudo = settings.SETTINGS.run.split(' ');
+	if (sudo[0]==='sudo')
+	{
+		this.sudo = true;
+		cmd = 'sudo';
+		args.splice (0, 0, '-E', 'python');
+	}
+
+	mkdirp.sync (path.join(process.env.HOME, 'notebook'));
+	fs.chmodSync (path.join(process.env.HOME, 'notebook'), '2775');
+	// console.log (parseInt ('0002', 8));
+	// var oldumask = process.umask (parseInt ('0002', 8));
+	this.python = child_process.spawn (cmd, args, {stdio: ['pipe', 'pipe', 'pipe'], 'env':_.assign (process.env, {'MPLBACKEND':'Agg'})});
 	this.pid = this.python.pid;
 	debug ('Python [%d] started', this.pid);
 	this.waiting = DATA_TYPE;
@@ -70,93 +97,162 @@ function Python ()
 	this.stdoutBuffer = '';
 	this.stderrBuffer = '';
 
+	this.connection = redis.createClient ();
+	this.connection.on ('error', function ()
+	{
+		console.log ('redis error');
+	});
+	this.connection.subscribe (this.linkredis+'response');
+	this.connection.subscribe (this.linkredis+'exception');
+
 	this.response = null;
 	this.exception = null;
-	this._data = function _data (data)
-	{
-		if (this.status !== STOPPED)
-		{
-			if (this.waiting === DATA_TYPE)
-			{
-				this.dataType = data.toString();
-				this.waiting = DATA_VALUE;
-			}
-			else
-			if (this.waiting === DATA_VALUE)
-			{
-				if (data.toString() === this.boundary)
-				{
-					this.waiting = DATA_TYPE;
-					// console.log (this.dataBuffer);
-					// console.log (this.dataType);
-					var type = regex.exec (this.dataType);
-					var f = '';
-					var s = '';
-					if (type && type.length==3)
-					{
-						f = type[1];
-						s = type[2];
-					}
-					this.response = {
-						type: {
-							f: f,
-							s: s
-						},
-						buf: this.dataBuffer.substring (0, this.dataBuffer.length-1)
-					};
-					if (this.status === READY)
-					{
-						uplink.send ('note', {
-							a: 'r', 
-							t: 'r',
-							d: this.response,
-							l: this.currentScript.label
-						});
-						this.response = null;
-					}
-					// console.log (response);
-					this.dataType = null;
-					this.dataBuffer = '';
-				}
-				else
-				{
-					this.dataBuffer = this.dataBuffer + data + '\n';
-					// console.log (data);
-				}
-			}
-		}
-	};
 
-	this._exception = function _exception (data)
+	this.connection.on ('message', function (channel, message)
 	{
-		if (this.status !== STOPPED && this.currentScript)
+		console.log (channel);
+		if (that.status !== STOPPED)
 		{
-			if (data.toString() === this.boundary)
+			if (channel === that.linkredis+'response')
 			{
-				this.exception = {
-					buf: this.exceptionBuffer
+				that.dataType = message.substr(0, message.indexOf("\n"));
+				that.dataBuffer = message.substr(message.indexOf("\n")+1);
+				var type = regex.exec (that.dataType);
+				var f = '';
+				var s = '';
+				if (type && type.length==3)
+				{
+					f = type[1];
+					s = type[2];
+				}
+				that.response = {
+					type: {
+						f: f,
+						s: s
+					},
+					buf: that.dataBuffer
 				};
-				uplink.send ('note', {
-					a: 'r', 
-					t: 'e',
-					d: this.exception,
-					l: this.currentScript.label
-				});
-				// console.log (exception);
-				this.exceptionBuffer = '';
+				if (that.status === READY)
+				{
+					uplink.send ('note', {
+						a: 'r', 
+						t: 'r',
+						d: that.response,
+						l: that.currentScript.label
+					});
+					that.response = null;
+				}
+				// console.log (response);
+				that.dataType = null;
+				that.dataBuffer = '';
 			}
 			else
+			if (channel === that.linkredis+'exception')
 			{
-				// console.log (data);
-				this.exceptionBuffer = this.exceptionBuffer + data + '\n';
-				// console.log (data);
+				if (that.currentScript)
+				{
+					that.exceptionBuffer = message
+					that.exception = {
+						buf: that.exceptionBuffer
+					};
+					uplink.send ('note', {
+						a: 'r', 
+						t: 'e',
+						d: that.exception,
+						l: that.currentScript.label
+					});
+					// console.log (exception);
+					that.exceptionBuffer = '';
+				}
 			}
 		}
-		else
-		{
-			console.log (data);
-		}
-	};
+	});
+
+	// this._data = function _data (data)
+	// {
+	// 	if (this.status !== STOPPED)
+	// 	{
+	// 		if (this.waiting === DATA_TYPE)
+	// 		{
+	// 			this.dataType = data.toString();
+	// 			this.waiting = DATA_VALUE;
+	// 		}
+	// 		else
+	// 		if (this.waiting === DATA_VALUE)
+	// 		{
+	// 			if (data.toString() === this.boundary)
+	// 			{
+	// 				this.waiting = DATA_TYPE;
+	// 				// console.log (this.dataBuffer);
+	// 				// console.log (this.dataType);
+	// 				var type = regex.exec (this.dataType);
+	// 				var f = '';
+	// 				var s = '';
+	// 				if (type && type.length==3)
+	// 				{
+	// 					f = type[1];
+	// 					s = type[2];
+	// 				}
+	// 				this.response = {
+	// 					type: {
+	// 						f: f,
+	// 						s: s
+	// 					},
+	// 					buf: this.dataBuffer.substring (0, this.dataBuffer.length-1)
+	// 				};
+	// 				if (this.status === READY)
+	// 				{
+	// 					uplink.send ('note', {
+	// 						a: 'r', 
+	// 						t: 'r',
+	// 						d: this.response,
+	// 						l: this.currentScript.label
+	// 					});
+	// 					this.response = null;
+	// 				}
+	// 				// console.log (response);
+	// 				this.dataType = null;
+	// 				this.dataBuffer = '';
+	// 			}
+	// 			else
+	// 			{
+	// 				this.dataBuffer = this.dataBuffer + data + '\n';
+	// 				// console.log (data);
+	// 			}
+	// 		}
+	// 	}
+	// };
+
+	// this._exception = function _exception (data)
+	// {
+	// 	if (this.status !== STOPPED && this.currentScript)
+	// 	{
+	// 		if (data.toString() === this.boundary)
+	// 		{
+	// 			this.exception = {
+	// 				buf: this.exceptionBuffer
+	// 			};
+	// 			uplink.send ('note', {
+	// 				a: 'r', 
+	// 				t: 'e',
+	// 				d: this.exception,
+	// 				l: this.currentScript.label
+	// 			});
+	// 			// console.log (exception);
+	// 			this.exceptionBuffer = '';
+	// 		}
+	// 		else
+	// 		{
+	// 			// console.log (data);
+	// 			this.exceptionBuffer = this.exceptionBuffer + data + '\n';
+	// 			// console.log (data);
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		console.log (data);
+	// 	}
+	// };
 
 	this.evaluate = function evaluate (script, label)
 	{
@@ -184,15 +280,33 @@ function Python ()
 
 	this.interrupt = function interrupt ()
 	{
-		if (this.python) this.python.kill ('SIGINT');
+		if (this.python)
+		{
+			if (sudo)
+			{
+				child_process.spawn ('sudo', ['kill', '-2', this.pid]);
+			}
+			else
+			{
+				this.python.kill ('SIGINT');
+			}
+		}
 	};
 
 	this.stop = function stop ()
 	{
 		clearInterval (this.sendBuffer);
+		this.connection.quit ();
 		if (this.python)
 		{
-			this.python.kill ('SIGKILL');
+			if (sudo)
+			{
+				child_process.spawn ('sudo', ['kill', '-9', this.pid]);
+			}
+			else
+			{
+				this.python.kill ('SIGKILL');
+			}
 			this.python = null;
 			this.status = STOPPED;
 		}
@@ -230,7 +344,7 @@ function Python ()
 			if (that.currentScript) 
 			{
 				debug ('Finished script %s', that.currentScript.label);
-				if (that.dataBuffer.length !== null)
+				if (that.response !== null)
 				{
 					uplink.send ('note', {
 						a: 'r', 
@@ -306,15 +420,15 @@ function Python ()
 		// that.stderrBuffer = that.stderrBuffer + data;
 		console.log ('stderr: '+data.toString ());
 	});
-	this.python.stdio[3].pipe (split2()).on ('data', function (data)
-	{
-		// console.log ('output');
-		that._data (data);
-	});
-	this.python.stdio[4].pipe (split2()).on ('data', function (data)
-	{
-		that._exception (data);
-	});
+	// this.python.stdio[3].pipe (split2()).on ('data', function (data)
+	// {
+	// 	// console.log ('output');
+	// 	that._data (data);
+	// });
+	// this.python.stdio[4].pipe (split2()).on ('data', function (data)
+	// {
+	// 	that._exception (data);
+	// });
 }
 
 debug ('Registering for note tag');
@@ -356,6 +470,21 @@ uplink.tags.on ('note', function (p)
 	if (p.a === 's')
 	{
 		if (python) python.interrupt ();
+	}
+	else
+	if (p.a === 'i')
+	{
+		if (python)
+		{
+			
+		}
+		else
+		{
+			uplink.send ('note', {
+				a:'i',
+				s:'s'
+			});
+		}
 	}
 });
 
