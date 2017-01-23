@@ -29,7 +29,7 @@ var BUFFER_SIZE = 8192;
 var SerialPort = null;
 if (serialport)
 {
-	SerialPort = serialport.SerialPort;
+	SerialPort = serialport;
 }
 
 function run ()

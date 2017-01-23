@@ -31,6 +31,8 @@ var mkdirp = require ('mkdirp');
 
 var redis = require ('redis');
 
+var async = require ('async');
+
 var DATA_TYPE = 0;
 var DATA_VALUE = 1;
 
@@ -38,6 +40,8 @@ var LOADING = 0;
 var READY = 1;
 var PROCESSING = 2;
 var STOPPED = 3;
+
+var serial = null;
 
 // var script = 
 // `
@@ -504,6 +508,62 @@ uplink.tags.on ('note', function (p)
 	if (p.a === 'status')
 	{
 		sendStatus ();
+	}
+	else
+	if (p.a === 'f')
+	{
+		if (p.f && p.f.length>0)
+		{
+			if (serial) serial.kill ('SIGKILL');
+			var fdir = path.join (process.env.HOME,'notebook','firmware');
+			var f = path.basename (p.s);
+			var dir = path.join (fdir, path.dirname(p.s));
+			var filename = path.join (dir, f);
+			var makefile = path.join (fdir,'makefile');
+			async.series ([
+					function (done) { mkdirp (dir, done) ;},
+					function (done) { fs.writeFile (filename, p.f, done); },
+					function (done) { fs.writeFile (makefile, p.m, done); },
+				],
+				function (err)
+				{
+					if (!err)
+					{
+						serial = child_process.spawn ('make', ['PROJECTID=0', 'FIRMWARE=temp', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir});
+						serial.on ('exit', function (err)
+						{
+							serial = null;
+							uplink.send ('note', {
+								a:'f',
+								s:'f',
+								e:err
+							});
+						});
+						serial.stdout.on ('data', function (data)
+						{
+							uplink.send ('note', {
+								a:'f',
+								s:'o',
+								d:data.toString ()
+							});
+							console.log ('stdout: '+data.toString());
+						});
+						serial.stderr.on ('data', function (data)
+						{
+							uplink.send ('note', {
+								a:'f',
+								s:'e',
+								d:data.toString ()
+							});
+							console.log ('stderr: '+data.toString());
+						});
+					}
+				});
+		}
+		else
+		{
+			if (serial) serial.kill ('SIGKILL');
+		}
 	}
 });
 
