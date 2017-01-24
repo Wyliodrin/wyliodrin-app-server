@@ -42,6 +42,7 @@ var PROCESSING = 2;
 var STOPPED = 3;
 
 var serial = null;
+var flashing = null;
 
 // var script = 
 // `
@@ -515,6 +516,7 @@ uplink.tags.on ('note', function (p)
 		if (p.f && p.f.length>0)
 		{
 			if (serial) serial.kill ('SIGKILL');
+			flashing = p.l;
 			var fdir = path.join (process.env.HOME,'notebook','firmware');
 			var f = path.basename (p.s);
 			var dir = path.join (fdir, path.dirname(p.s));
@@ -529,20 +531,24 @@ uplink.tags.on ('note', function (p)
 				{
 					if (!err)
 					{
-						serial = child_process.spawn ('make', ['PROJECTID=0', 'FIRMWARE=temp', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir});
+						var label = flashing;
+						serial = child_process.spawn ('make', ['PROJECTID='+0, 'FIRMWARE=arduino', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe', 'pipe']});
 						serial.on ('exit', function (err)
 						{
-							serial = null;
 							uplink.send ('note', {
 								a:'f',
+								l: label,
 								s:'f',
 								e:err
 							});
+							serial = null;
+							flashing = null;
 						});
 						serial.stdout.on ('data', function (data)
 						{
 							uplink.send ('note', {
 								a:'f',
+								l: label,
 								s:'o',
 								d:data.toString ()
 							});
@@ -552,10 +558,20 @@ uplink.tags.on ('note', function (p)
 						{
 							uplink.send ('note', {
 								a:'f',
+								l: label,
 								s:'e',
 								d:data.toString ()
 							});
 							console.log ('stderr: '+data.toString());
+						});
+						serial.stdio[3].on ('data', function (data)
+						{
+							uplink.send ('note', {
+								a:'f',
+								l: label,
+								s:'r',
+								d:data.toString ()
+							});
 						});
 					}
 				});
