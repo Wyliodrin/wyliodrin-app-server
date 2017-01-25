@@ -173,20 +173,9 @@ function stopProject ()
 
 function runProject (p)
 {
-	var dir = settings.SETTINGS.build_file+path.sep+'app_project';
+	var dir = settings.SETTINGS.build_file+path.sep+'tree_project';
 	var exec = child_process.exec;
 	var ext = 'js';
-	if (p.l === 'python') ext = 'py';
-	else
-	if (p.l === 'visual') ext = 'py';
-	else
-	if (p.l === 'shell') ext = 'sh';
-	else
-	if (p.l === 'csharp') ext = 'cs';
-	else
-	if (p.l === 'powershell') ext = 'ps1';
-	else
-	if (p.l === 'streams') ext = 'streams';
 	if (projectpid !== 0)
 	{
 		runAnotherProject = p;
@@ -261,9 +250,9 @@ function runProject (p)
 				debug ('err: '+err);
 				debug ('stdout: '+stdout);
 				debug ('stderr: '+stdout);
-				if (stdout) uplink.send ('p', {a:'start', r:'s', s:'o', t:stdout});
-				if (stderr) uplink.send ('p', {a:'start', r:'s', s:'e', t:stderr});
-				if (err) uplink.send ('p', {a:'start', r:'e', e:err});
+				if (stdout) uplink.send ('tp', {a:'start', r:'s', s:'o', t:stdout});
+				if (stderr) uplink.send ('tp', {a:'start', r:'s', s:'e', t:stderr});
+				if (err) uplink.send ('tp', {a:'start', r:'e', e:err});
 				
 				var makerun = settings.SETTINGS.run.split(' ');
 				project = util.pty.spawn(makerun[0], makerun.slice (1), {
@@ -278,15 +267,15 @@ function runProject (p)
 
 				fs.writeFileSync (PROJECT_PID_TEMP, projectpid);
 
-				if (project) uplink.send ('p', {a:'start', r:'d'});
-				else uplink.send ('p', {a:'start', r:'e'});
+				if (project) uplink.send ('tp', {a:'start', r:'d'});
+				else uplink.send ('tp', {a:'start', r:'e'});
 
 				gadget.status ();
 
 				project.on('data', function(data) {
 					if (runAnotherProject === null)
 					{
-				  		uplink.sendLowPriority ('p', {a:'k', t:data});
+				  		uplink.sendLowPriority ('tp', {a:'k', t:data});
 				  	}
 				});
 				project.resize (p.c, p.r);
@@ -303,8 +292,8 @@ function runProject (p)
 					}
 					else 
 					{
-						uplink.send ('p', {a:'k', t:'Project exit with error '+error+'\n'});
-						uplink.send ('p', {a:'stop'});
+						uplink.send ('tp', {a:'k', t:'Project exit with error '+error+'\n'});
+						uplink.send ('tp', {a:'stop'});
 						gadget.status ();
 					}
 				});

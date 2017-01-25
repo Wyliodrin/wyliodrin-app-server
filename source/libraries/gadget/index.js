@@ -11,6 +11,7 @@ var fs = require ('fs');
 var path = require ('path');
 var bonjour = require ('../bonjour');
 var project = require ('../project');
+var treeProject = require ('../treeProject');
 var network = require ('../network');
 var peripherals = require ('../peripherals');
 var uplink = require ('../uplink');
@@ -41,7 +42,8 @@ function status ()
 	uplink.send ('i', {
 			n:settings.CONFIG_FILE.jid, 
 			c:settings.boardtype, 
-			r:project.getProjectPid()!==0, 
+			r:project.getProjectPid()!==0,
+			tr:treeProject.getProjectPid()!==0,
 			i:network.getNetwork (), 
 			p:(util.isWindows()?'windows':'linux'),
 			pf:peripherals.getPeripherals()
