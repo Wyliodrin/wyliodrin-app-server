@@ -522,17 +522,20 @@ uplink.tags.on ('note', function (p)
 			var dir = path.join (fdir, path.dirname(p.s));
 			var filename = path.join (dir, f);
 			var makefile = path.join (fdir,'makefile');
+			var makefile_firmware = path.join (fdir,'makefile.firmware');
 			async.series ([
+					function (done) { child_process.exec ('rm -rf '+fdir, done); },
 					function (done) { mkdirp (dir, done) ;},
 					function (done) { fs.writeFile (filename, p.f, done); },
 					function (done) { fs.writeFile (makefile, p.m, done); },
+					function (done) { fs.writeFile (makefile_firmware, p.mfl, done); },
 				],
 				function (err)
 				{
 					if (!err)
 					{
 						var label = flashing;
-						serial = child_process.spawn ('make', ['PROJECTID='+0, 'FIRMWARE=arduino', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe', 'pipe']});
+						serial = child_process.spawn ('make', ['PROJECTID='+0, 'FIRMWARE=notebook', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe', 'pipe']});
 						serial.on ('exit', function (err)
 						{
 							uplink.send ('note', {
