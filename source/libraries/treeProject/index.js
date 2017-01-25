@@ -57,14 +57,14 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 				    if(err) { console.log(err) }
 				});*/
 
-				var here = false;
+				var here = true;
 
 				var makepath = path.join(d, "Makefile.send");
 				if (tree[i].m.s){
 					fs.writeFile(makepath, tree[i].m.s, function(err) {
 				    	if(err) { console.log(err) }
 					});
-					here = true;
+					here = false;
 				}
 
 				makepath = path.join(d, "Makefile.compileAway");
@@ -72,7 +72,6 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 					fs.writeFile(makepath, tree[i].m.ca, function(err) {
 				    	if(err) { console.log(err) }
 					});
-					here = false;
 				}
 
 				makepath = path.join(d, "Makefile.compileHere");
@@ -80,7 +79,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 					fs.writeFile(makepath, tree[i].m.ch, function(err) {
 				    	if(err) { console.log(err) }
 					});
-					here = false;
+					here = true;
 				}
 
 				makepath = path.join(d, "Makefile.flash");
@@ -106,12 +105,12 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 			}); 
 		}
 	}
-	console.log(generalMakefile);
 	return generalMakefile;
 }
 
 function firmware_makefile(generalMakefile, here, folder, board, ports)
 {
+	console.log(here);
 	if (!here)
 	{
 		//compile onserver
@@ -215,10 +214,6 @@ function runProject (p)
 		fs.writeFile(path.join(dir, "Makefile"), generalMakefile, function(err) {
 			if(err) { console.log(err); }
 		});
-
-		//now run makefile
-
-		console.log ("TOTU BINE PANA AICI");
 
 
 
