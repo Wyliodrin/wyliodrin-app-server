@@ -40,7 +40,7 @@ function status ()
 {
 	debug ('Sending status');
 	uplink.send ('i', {
-			n:settings.CONFIG_FILE.jid, 
+			n:settings.boardname || settings.CONFIG_FILE.jid, 
 			c:settings.boardtype, 
 			r:project.getProjectPid()!==0,
 			tr:treeProject.getProjectPid()!==0,
