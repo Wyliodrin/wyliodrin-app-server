@@ -44,10 +44,12 @@ function run ()
 		{
 			serial = new SerialPort (board.serial, {
 				baudrate: CONFIG_FILE.serialbaudrate || 115200,
-			}, false);
+				autoOpen: false
+			});
 
 			serial.open (function (error)
 			{
+				console.log ('open');
 				if (!error)
 				{
 					debug ('Serial connected');
@@ -219,6 +221,7 @@ function packet ()
 	try
 	{
 		m = msgpack.decode (data);
+		console.log (m);
 	}
 	catch (e)
 	{
@@ -390,7 +393,7 @@ function sendLowPriority (tag, data)
 
 function send (tag, data)
 {
-	console.log (sendQueue);
+	// console.log (sendQueue);
 	sendQueue.push ({t: tag, d: data});
 	if (_.isFunction (_send))
 	{

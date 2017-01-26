@@ -198,7 +198,7 @@ function runProject (p)
 		rmdir.sync(dir);
 		fs.mkdirSync(dir);
 
-		var generalMakefile = "all:\n";
+		var generalMakefile = "run:\n";
 		generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
 
 
@@ -211,7 +211,7 @@ function runProject (p)
 			}
 		}
 
-		fs.writeFile(path.join(dir, "Makefile"), generalMakefile, function(err) {
+		fs.writeFile(path.join(dir, "Makefile."+settings.boardtype), generalMakefile, function(err) {
 			if(err) { console.log(err); }
 		});
 
@@ -255,7 +255,7 @@ function runProject (p)
 				  cols: p.c,
 				  rows: p.r,
 				  cwd: dir,
-				  env: _.assign (process.env, gadget.env, {wyliodrin_project:"app-project"})
+				  env: _.assign (process.env, gadget.env, {wyliodrin_project:"tree-project"})
 				});
 
 				projectpid = project.pid;
