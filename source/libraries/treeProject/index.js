@@ -88,7 +88,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 				    	if(err) { console.log(err) }
 					});
 				}
-				generalMakefile = firmware_makefile(generalMakefile,here,d,tree[i].ftype,tree[i].fport);
+				generalMakefile = firmware_makefile(generalMakefile,here,d,tree[i].faketype,fakesubtype,tree[i].fport);
 
 			}
 			else{
@@ -108,7 +108,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 	return generalMakefile;
 }
 
-function firmware_makefile(generalMakefile, here, folder, board, ports)
+function firmware_makefile(generalMakefile, here, folder, type, subtype, ports)
 {
 	console.log(here);
 	if (!here)
@@ -119,18 +119,20 @@ function firmware_makefile(generalMakefile, here, folder, board, ports)
 	else
 	{
 		//compile local
-		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.compileHere" + "\n");
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.compileHere PROJECTID=0 FIRMWARE=0 DEVICE=" + subtype + "\n");
 	}
 
-	if (board == "openmote")
+	if (type == "openmote")
 	{
 		_.forEach(ports, function(port){
 			generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + "\n");
 		});
 	}
-	if (board == "arduino")
+	if (type == "arduino")
 	{
-		//////////////////////////////////////////////
+		_.forEach(ports, function(port){
+			generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + "\n");
+		});
 	}
 	return generalMakefile;
 }
@@ -183,15 +185,15 @@ function runProject (p)
 	}
 	else
 	{
-		var sudo = settings.SETTINGS.run.split(' ');
-		/*if (sudo[0]==='sudo')
+		/*var sudo = settings.SETTINGS.run.split(' ');
+		if (sudo[0]==='sudo')
 		{
 			sudo = 'sudo';
 		}
 		else
 		{
 			sudo = '';
-		}*/ //////////////////////////////////mai vedem
+		}*/
 
 		////////////////////////////am in dir folderul, in p.t arborele
 
@@ -238,7 +240,7 @@ function runProject (p)
 			{
 				cmd = board.shell+' '+path.join (__dirname, 'run.sh')+' ';
 			}
-			exec (cmd, function (err, stdout, stderr)
+			exec (cmd+dir+' "'+sudo+'" '+dir+path.dirname(board.firmware)+firmwaremakefile, function (err, stdout, stderr)
 			{
 				startingProject = false;
 
