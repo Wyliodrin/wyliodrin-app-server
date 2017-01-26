@@ -67,7 +67,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 					here = false;
 				}
 
-				makepath = path.join(d, "Makefile.compileAway");
+				makepath = path.join(d, "Makefile.firmware");
 				if (tree[i].m.ca){
 					fs.writeFile(makepath, tree[i].m.ca, function(err) {
 				    	if(err) { console.log(err) }
