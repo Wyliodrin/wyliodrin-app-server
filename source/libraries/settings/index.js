@@ -6,7 +6,15 @@ var util = require ('../../util.js');
 var board = require ('./board.js');
 var debug = require ('debug')('wyliodrin:app:server:settings');
 var os = require ('os');
-var version = require ('../../../package.json').version;
+var version = 0;
+try
+{
+	version = require ('../../../package.json').version;
+}
+catch (e)
+{
+	version = require ('../../package.json').version;
+}
 
 console.log ('Loading settings library');
 
