@@ -43,21 +43,38 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 			}
 			else if (tree[i].isfirmware){
 				if (!tree[i].enable){
-					console.log("not enabled");
+					//firmware not used (no port)
 					continue;
-				}
-				else{
-					console.log("enabled;")
 				}
 				d = d + ".firmware";
 				fs.mkdirSync(d);
 
-				/*var makepath = path.join(d, "Makefile.wyliodrin");
-				fs.writeFile(makepath, tree[i].m, function(err) {
-				    if(err) { console.log(err) }
-				});*/
-
 				var here = true;
+
+				var userDefined = false;
+
+				for (var j = 0 ; j< tree[i].children.length;j++){
+					var child = tree[i].children[j];
+					if (child.name.toLowerCase() == "makefile"){
+						//found user defined makefile
+						var makepath = path.join(d, "Makefile.firmware");
+						fs.writeFile(makepath, child.content, function(err) {
+						   	if(err) { console.log(err) }
+						});
+						tree[i].children.splice(i,1);
+						userDefined = true;
+						break;
+					}
+						
+				}
+
+				if (!userDefined){
+					//default makefile
+					var makepath = path.join(d, "Makefile.firmware");
+					fs.writeFile(makepath, tree[i].m.ca, function(err) {
+					   	if(err) { console.log(err) }
+					});
+				}
 
 				var makepath = path.join(d, "Makefile.send");
 				if (tree[i].m.s){
@@ -65,13 +82,6 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 				    	if(err) { console.log(err) }
 					});
 					here = false;
-				}
-
-				makepath = path.join(d, "Makefile.firmware");
-				if (tree[i].m.ca){
-					fs.writeFile(makepath, tree[i].m.ca, function(err) {
-				    	if(err) { console.log(err) }
-					});
 				}
 
 				makepath = path.join(d, "Makefile.compileHere");
@@ -88,7 +98,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 				    	if(err) { console.log(err) }
 					});
 				}
-				generalMakefile = firmware_makefile(generalMakefile,here,d,tree[i].faketype,fakesubtype,tree[i].fport);
+				generalMakefile = firmware_makefile(generalMakefile,here,d,tree[i].faketype,tree[i].fakesubtype,tree[i].fport);
 
 			}
 			else{
@@ -110,30 +120,23 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 
 function firmware_makefile(generalMakefile, here, folder, type, subtype, ports)
 {
-	console.log(here);
+	//type and subtype have
+	//.type(openmote) and .name("Open Mote")
 	if (!here)
 	{
 		//compile onserver
-		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.send" + "\n");
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.send" + " -s\n");
 	}
 	else
 	{
 		//compile local
-		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.compileHere PROJECTID=0 FIRMWARE=0 DEVICE=" + subtype + "\n");
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.compileHere PROJECTID=0 FIRMWARE=0 DEVICE=" + subtype.type + " -s\n");
 	}
 
-	if (type == "openmote")
-	{
-		_.forEach(ports, function(port){
-			generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + "\n");
-		});
-	}
-	if (type == "arduino")
-	{
-		_.forEach(ports, function(port){
-			generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + "\n");
-		});
-	}
+	_.forEach(ports, function(port){
+		generalMakefile += ("\t+$(MAKE) -C " + "'" + folder + "' -f Makefile.flash PORT=" + port + " DEVICE=" + subtype.type + " -s\n");
+	});
+
 	return generalMakefile;
 }
 
@@ -185,7 +188,7 @@ function runProject (p)
 	}
 	else
 	{
-		/*var sudo = settings.SETTINGS.run.split(' ');
+		var sudo = settings.SETTINGS.run.split(' ');
 		if (sudo[0]==='sudo')
 		{
 			sudo = 'sudo';
@@ -193,39 +196,35 @@ function runProject (p)
 		else
 		{
 			sudo = '';
-		}*/
+		}
 
 		////////////////////////////am in dir folderul, in p.t arborele
 
-		rmdir.sync(dir);
-		fs.mkdirSync(dir);
+		//rmdir.sync(dir);
+		//fs.mkdirSync(dir);
+		function write_all_tree(p,dir,ext){
+			var generalMakefile = "run:\n";
+			generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
 
-		var generalMakefile = "run:\n";
-		generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
 
+			//make the software firmware
+			var items = fs.readdirSync(dir);
 
-		//make the software firmware
-		var items = fs.readdirSync(dir);
-
-		for (var i=0; i<items.length; i++) {
-			if(_.endsWith(items[i], ".software")){
-				generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
+			for (var i=0; i<items.length; i++) {
+				if(_.endsWith(items[i], ".software")){
+					generalMakefile += ("\t+$(MAKE) -C " + "'" + items[i] + "' -f Makefile.wyliodrin" + "\n");
+				}
 			}
+
+			fs.writeFile(path.join(dir, "Makefile."+settings.boardtype), generalMakefile, function(err) {
+				if(err) { console.log(err); }
+			});
 		}
 
-		fs.writeFile(path.join(dir, "Makefile."+settings.boardtype), generalMakefile, function(err) {
-			if(err) { console.log(err); }
-		});
 
 
 
-
-		/*var firmwaremakefile = '';
-		if (board.firmware_makefile !== '')
-		{
-			firmwaremakefile = ' && cp ./makefile/'+board.firmware_makefile+' '+dir+path.dirname(board.firmware)+'/Makefile';
-		}*/
-		//////////////////////////////////iar discutabil daca il folosim sa luam firmwareuri predefinite
+		
 		runAnotherProject = null;
 		debug ('Removing project');
 		if (startingProject === false)
@@ -240,7 +239,9 @@ function runProject (p)
 			{
 				cmd = board.shell+' '+path.join (__dirname, 'run.sh')+' ';
 			}
-			exec (cmd+dir+' "'+sudo+'" '+dir+path.dirname(board.firmware)+firmwaremakefile, function (err, stdout, stderr)
+
+			console.log(cmd+dir+' "'+sudo+'" ');
+			exec (cmd+dir+' "'+sudo+'" ', function (err, stdout, stderr)
 			{
 				startingProject = false;
 
@@ -251,6 +252,8 @@ function runProject (p)
 				if (stderr) uplink.send ('tp', {a:'start', r:'s', s:'e', t:stderr});
 				if (err) uplink.send ('tp', {a:'start', r:'e', e:err});
 				
+				write_all_tree(p,dir,ext);
+
 				var makerun = settings.SETTINGS.run.split(' ');
 				project = util.pty.spawn(makerun[0], makerun.slice (1), {
 				  name: 'xterm-color',
