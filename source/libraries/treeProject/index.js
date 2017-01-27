@@ -143,11 +143,11 @@ function firmware_makefile(generalMakefile, here, folder, type, subtype, ports)
 
 if (util.isWindows())
 {
-	PROJECT_PID_TEMP = 'c:\\wyliodrin\\tmp\\.app-project';
+	PROJECT_PID_TEMP = 'c:\\wyliodrin\\tmp\\.tree-project';
 }
 else
 {
-	PROJECT_PID_TEMP = '/tmp/.app-project';
+	PROJECT_PID_TEMP = '/tmp/.tree-project';
 }
 console.log ('Project PID stored in '+PROJECT_PID_TEMP);
 
@@ -170,7 +170,9 @@ function stopProject ()
 		console.log (settings.SETTINGS.stop+' '+projectpid);
 		child_process.exec (settings.SETTINGS.stop+' '+projectpid);
 		projectpid = 0;
-		fs.unlink (PROJECT_PID_TEMP);
+		fs.unlink (PROJECT_PID_TEMP, function(err){
+			console.log(err);
+		});
 		if (project === null) gadget.status ();
 	}
 }
@@ -282,7 +284,9 @@ function runProject (p)
 
 				project.on ('exit', function (error)
 				{
-					fs.unlink (PROJECT_PID_TEMP);
+					fs.unlink (PROJECT_PID_TEMP, function (err){
+						console.log(err);
+					});
 					project = null;
 					projectpid = 0;
 					// console.log (runAnotherProject);
