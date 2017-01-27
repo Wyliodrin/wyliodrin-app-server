@@ -15,7 +15,15 @@ var treeProject = require ('../treeProject');
 var network = require ('../network');
 var peripherals = require ('../peripherals');
 var uplink = require ('../uplink');
-var version = require ('../../../package.json').version;
+var version = 0;
+try
+{
+	version = require ('../../../package.json').version;
+}
+catch (e)
+{
+	version = require ('../../package.json').version;
+}
 
 debug ('registering for tag n');
 uplink.tags.on ('n', function (p)
