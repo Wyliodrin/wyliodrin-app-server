@@ -522,7 +522,7 @@ uplink.tags.on ('note', function (p)
 			var dir = path.join (fdir, path.dirname(p.s));
 			var filename = path.join (dir, f);
 			var makefile = path.join (fdir,'makefile');
-			var makefile_firmware = path.join (fdir,'makefile.firmware');
+			var makefile_firmware = path.join (fdir,'Makefile.firmware');
 			async.series ([
 					function (done) { child_process.exec ('rm -rf '+fdir, done); },
 					function (done) { mkdirp (dir, done) ;},
