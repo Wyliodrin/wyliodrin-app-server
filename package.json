@@ -12,14 +12,14 @@
     "pty.js": "~0.3.0",
     "redis": "~2.6.3",
     "rimraf": "^2.5.4",
-    "serialport": "^4.0.7",
     "split2": "^2.1.1",
     "tcp-ping": "~0.1.1",
     "uuid": "^3.0.1",
     "wireless-tools": "~0.18.1"
   },
   "optionalDependencies": {
-    "authenticate-pam": "~1.0.0"
+    "authenticate-pam": "~1.0.0",
+    "serialport": "^4.0.7"
   },
   "devDependencies": {},
   "scripts": {
