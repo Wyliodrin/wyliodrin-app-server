@@ -513,11 +513,11 @@ uplink.tags.on ('note', function (p)
 	else
 	if (p.a === 'f')
 	{
+		var fdir = path.join (process.env.HOME,'notebook','firmware');
 		if (p.f && p.f.length>0)
 		{
-			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, function (err) {});
+			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, {cwd: fdir}, function (err) {});
 			flashing = p.l;
-			var fdir = path.join (process.env.HOME,'notebook','firmware');
 			var f = path.basename (p.s);
 			var dir = path.join (fdir, path.dirname(p.s));
 			var filename = path.join (dir, f);
@@ -581,7 +581,7 @@ uplink.tags.on ('note', function (p)
 		}
 		else
 		{
-			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, function (err) {});
+			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, {cwd: fdir}, function (err) {});
 		}
 	}
 });
