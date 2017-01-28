@@ -515,7 +515,7 @@ uplink.tags.on ('note', function (p)
 	{
 		if (p.f && p.f.length>0)
 		{
-			if (serial) serial.kill ('SIGKILL');
+			if (serial) child_process.exec ('kill -9 '+serial.pid, function (err) {});
 			flashing = p.l;
 			var fdir = path.join (process.env.HOME,'notebook','firmware');
 			var f = path.basename (p.s);
@@ -581,7 +581,7 @@ uplink.tags.on ('note', function (p)
 		}
 		else
 		{
-			if (serial) serial.kill ('SIGKILL');
+			if (serial) child_process.exec ('kill -9 '+serial.pid, function (err) {});
 		}
 	}
 });
