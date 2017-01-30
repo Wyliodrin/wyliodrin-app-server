@@ -8,8 +8,8 @@ import redis
 
 wyliodrin_redis = redis.StrictRedis ()
 
-import matplotlib
-matplotlib.use ('Agg')
+#import matplotlib
+#matplotlib.use ('Agg')
 
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -125,8 +125,6 @@ os.umask (002)
 
 def wyliodrin_plot_type (value):
 	try:
-		import matplotlib
-		import matplotlib.axes
 		import StringIO
 		# print callable (value.get_figure)
 		if hasattr (value, 'get_figure') and callable (value.get_figure):
