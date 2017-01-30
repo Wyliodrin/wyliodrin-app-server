@@ -108,11 +108,13 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 		}
 		else if (!tree[i].isdir){
 			//touch
-			var d = path.join(folder, tree[i].name);
-			
-			fs.writeFile(d, tree[i].content, function(err) {
-			    if(err) { console.log(err) }
-			}); 
+			if (tree[i].name.toLowerCase() != "makefile"){
+				var d = path.join(folder, tree[i].name);
+				
+				fs.writeFile(d, tree[i].content, function(err) {
+				    if(err) { console.log(err) }
+				}); 
+			}
 		}
 	}
 	return generalMakefile;
