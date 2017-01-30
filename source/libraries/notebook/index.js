@@ -86,6 +86,7 @@ function Python ()
 
 	mkdirp.sync (path.join(process.env.HOME, 'notebook'));
 	fs.chmodSync (path.join(process.env.HOME, 'notebook'), '2775');
+	fs.writeFileSync (path.join(process.env.HOME, 'notebook', 'matplotlibrc'), 'backend : Agg\n');
 	// console.log (parseInt ('0002', 8));
 	// var oldumask = process.umask (parseInt ('0002', 8));
 	this.python = child_process.spawn (cmd, args, {stdio: ['pipe', 'pipe', 'pipe'], 'env':_.assign (process.env, {'MPLBACKEND':'Agg'})});
