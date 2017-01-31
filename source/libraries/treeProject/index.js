@@ -264,7 +264,7 @@ function runProject (p)
 				  cols: p.c,
 				  rows: p.r,
 				  cwd: dir,
-				  env: _.assign (process.env, gadget.env, {wyliodrin_project:"tree-project"})
+				  env: _.assign (process.env, gadget.env, {wyliodrin_project:"app-project"})
 				});
 
 				projectpid = project.pid;
