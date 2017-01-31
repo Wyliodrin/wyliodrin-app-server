@@ -34,7 +34,7 @@ if (board.signals === 'redis' && redis)
 
 	subscriber.on ("message", function (channel, message)
 	{
-		if (message.indexOf ('signal:app-project')===0)
+		if (message.indexOf ('signal:tree-project')===0)
 		{
 			var projectId = message.substring(7);
 			uplink.sendValues (projectId);
@@ -47,7 +47,7 @@ if (board.signals === 'redis' && redis)
 	});
 
 	debug ('Erasing signals');
-	client.ltrim ('app-project', 0, -1);
+	client.ltrim ('tree-project', 0, -1);
 }
 
 if (board.signals === 'udp' || !redis)
