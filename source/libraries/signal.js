@@ -37,7 +37,7 @@ if (board.signals === 'redis' && redis)
 		if (message.indexOf ('signal:app-project')===0)
 		{
 			var projectId = message.substring(7);
-			uplink.sendValues (projectId);
+			sendValues (projectId);
 		}
 	});
 
