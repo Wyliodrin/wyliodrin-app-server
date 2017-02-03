@@ -61,7 +61,7 @@ function treeToFilesystem(tree,folder,ext,generalMakefile){
 						fs.writeFile(makepath, child.content, function(err) {
 						   	if(err) { console.log(err) }
 						});
-						tree[i].children.splice(i,1);
+						tree[i].children.splice(j,1);
 						userDefined = true;
 						break;
 					}
