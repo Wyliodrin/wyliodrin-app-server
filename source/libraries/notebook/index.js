@@ -43,6 +43,7 @@ var STOPPED = 3;
 
 var serial = null;
 var flashing = null;
+var readserial = null;
 
 // var script = 
 // `
@@ -473,6 +474,12 @@ function sendStatus ()
 uplink.tags.on ('note', function (p)
 {
 	// restart
+	if (p.a === 'stop')
+	{
+		if (python) python.stop ();
+		python = null;
+	}
+	else
 	if (p.a === 'reset')
 	{
 		if (python) python.stop ();
@@ -517,7 +524,7 @@ uplink.tags.on ('note', function (p)
 		var fdir = path.join (process.env.HOME,'notebook','firmware');
 		if (p.f && p.f.length>0)
 		{
-			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, {cwd: fdir}, function (err) {});
+			if (serial) serial.kill ('SIGKILL');
 			flashing = p.l;
 			var f = path.basename (p.s);
 			var dir = path.join (fdir, path.dirname(p.s));
@@ -536,7 +543,7 @@ uplink.tags.on ('note', function (p)
 					if (!err)
 					{
 						var label = flashing;
-						serial = child_process.spawn ('make', ['PROJECTID='+0, 'FIRMWARE=notebook', 'DEVICE='+p.d, 'PORT='+p.p, 'BAUD='+p.b, 'compile', 'flash', 'serial'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe', 'pipe']});
+						serial = child_process.spawn ('make', ['PROJECTID='+0, 'FIRMWARE=notebook', 'DEVICE='+p.d, 'PORT='+p.p, 'compile', 'flash'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe']});
 						serial.on ('exit', function (err)
 						{
 							uplink.send ('note', {
@@ -568,21 +575,69 @@ uplink.tags.on ('note', function (p)
 							});
 							console.log ('stderr: '+data.toString());
 						});
-						serial.stdio[3].on ('data', function (data)
-						{
-							uplink.send ('note', {
-								a:'f',
-								l: label,
-								s:'r',
-								d:data.toString ()
-							});
-						});
 					}
 				});
 		}
 		else
 		{
-			if (serial) child_process.exec ('make stop; kill -9 '+serial.pid, {cwd: fdir}, function (err) {});
+			if (serial) serial.kill ('SIGKILL');
+			serial = null;
+		}
+	}
+	else
+	if (p.a === 'serial')
+	{
+		var fdir = path.join (process.env.HOME,'notebook','firmware');
+		if (p.l && p.l.length>0)
+		{
+			var label = p.l;
+			if (readserial) child_process.spawn ('make', ['stop'], {cwd:fdir});
+			readserial = child_process.spawn ('make', ['BAUD='+p.b, 'PORT='+p.p, 'serial'], {cwd:fdir, stdio:['pipe', 'pipe', 'pipe', 'pipe']});
+			readserial.on ('exit', function (err)
+			{
+				uplink.send ('note', {
+					a:'f',
+					l: label,
+					s:'f',
+					e:err
+				});
+				serial = null;
+				flashing = null;
+			});
+			readserial.stdout.on ('data', function (data)
+			{
+				uplink.send ('note', {
+					a:'f',
+					l: label,
+					s:'o',
+					d:data.toString ()
+				});
+				console.log ('stdout: '+data.toString());
+			});
+			readserial.stderr.on ('data', function (data)
+			{
+				uplink.send ('note', {
+					a:'f',
+					l: label,
+					s:'e',
+					d:data.toString ()
+				});
+				console.log ('stderr: '+data.toString());
+			});
+			readserial.stdio[3].on ('data', function (data)
+			{
+				uplink.send ('note', {
+					a:'f',
+					l: label,
+					s:'r',
+					d:data.toString ()
+				});
+			});
+		}
+		else
+		{
+			if (readserial) child_process.spawn ('make', ['stop'], {cwd:fdir});
+			readserial = null;
 		}
 	}
 });
