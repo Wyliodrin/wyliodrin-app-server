@@ -151,6 +151,11 @@ function run ()
 		else
 		{
 			debug ('There is another connection already');
+			var m = escape(msgpack.encode ({t:'e', d:{s: 'busy'}}));
+			_socket.write ('', function (){});
+			_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
+			_socket.write (m, function (){});
+			_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
 			_socket.end ();
 		}
 	});
@@ -332,6 +337,8 @@ function receivedDataPacket (data)
 								else 
 								{
 									debug ('Login error');
+									send ('', null);
+									send ('e', {s: 'login'});
 									socket.end ();
 									login = false;
 								}
@@ -536,6 +543,7 @@ debug ('Registering for tag d');
 tags.on ('d', function (p)
 {
 	socket.end ();
+	reset (SERIAL);
 });
 
 module.exports.send = send;
