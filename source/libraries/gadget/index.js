@@ -14,7 +14,8 @@ var project = require ('../project');
 var treeProject = require ('../treeProject');
 var network = require ('../network');
 var peripherals = require ('../peripherals');
-var uplink = require ('../uplink');
+var uplink = require ('../uplink')
+var child_process = require ('child_process');
 var version = 0;
 try
 {
@@ -44,6 +45,25 @@ uplink.tags.on ('i', function (p)
 	sendVersion ();
 });
 
+debug ('Registering for tag disc');
+uplink.tags.on ('disc', function (p)
+{
+	if (p.a === "poweroff"){
+		var poweroff = settings.SETTINGS.poweroff;
+		child_process.exec(poweroff, function (err, stdout, stderr){});
+	}
+	else if (p.a === "reboot"){
+		var reboot = settings.SETTINGS.poweroff.split(' ')[0];
+		if (reboot === "sudo"){
+			reboot = "sudo reboot";
+		}
+		else{
+			reboot = "reboot";
+		}
+		child_process.exec(reboot, function (err, stdout, stderr){});
+	}
+});
+
 function status ()
 {
 	debug ('Sending status');
@@ -61,7 +81,15 @@ function status ()
 function sendVersion ()
 {
 	debug ('Sending version');
-	uplink.send ('sv', {v:version});
+	child_process.exec("wylio -v", function (err, stdout, stderr){
+		if (err){
+			uplink.send ('sv', {v:version, os:os.type()+' '+os.release()});
+			console.log(err);
+		}
+		else{
+			uplink.send ('sv', {v:version, os:os.type()+' '+os.release(), libv:stdout});
+		}
+	});
 }
 
 function capabilities ()
