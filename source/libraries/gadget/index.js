@@ -74,7 +74,8 @@ function status ()
 			tr:treeProject.getProjectPid()!==0,
 			i:network.getNetwork (), 
 			p:(util.isWindows()?'windows':'linux'),
-			pf:peripherals.getPeripherals()
+			pf:peripherals.getPeripherals(),
+			h:settings.env.HOME
 		});
 }
 

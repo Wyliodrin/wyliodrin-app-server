@@ -6,7 +6,7 @@ var debug = require ('debug')('wyliodrin:app:server:shell');
 var uplink = require ('./uplink');
 var _ = require ('lodash');
 var settings = require ('./settings');
-var board = require ('./gadget').board;
+var board = require ('./settings').board;
 
 console.log ('Loading shell library');
 
@@ -16,6 +16,7 @@ function openShell (p)
 {
 	if (!shell)
 	{
+		
 		shell = util.pty.spawn(board.shell, [], {
 		  name: 'xterm-color',
 		  cols: p.c,
@@ -64,17 +65,26 @@ uplink.tags.on ('s', function (p)
 		if (!shell)
 		{
 			openShell (p);
+			console.log(7);
+		console.log(shell);
+		console.log(8);
 		}
 	}
 	else
 	if (p.a === 'r')
 	{
 		resizeShell (p.c, p.r);
+		console.log(7);
+		console.log(shell);
+		console.log(8);
 	}
 	else
 	if (p.a === 'k')
 	{
 		if (shell) keysShell (p.t);
 		else uplink.send ('s', {a:'e', e:'noshell'});
+		console.log(7);
+		console.log(shell);
+		console.log(8);
 	}
 });
