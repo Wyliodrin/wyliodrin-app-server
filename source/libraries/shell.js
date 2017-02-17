@@ -65,26 +65,17 @@ uplink.tags.on ('s', function (p)
 		if (!shell)
 		{
 			openShell (p);
-			console.log(7);
-		console.log(shell);
-		console.log(8);
 		}
 	}
 	else
 	if (p.a === 'r')
 	{
 		resizeShell (p.c, p.r);
-		console.log(7);
-		console.log(shell);
-		console.log(8);
 	}
 	else
 	if (p.a === 'k')
 	{
 		if (shell) keysShell (p.t);
 		else uplink.send ('s', {a:'e', e:'noshell'});
-		console.log(7);
-		console.log(shell);
-		console.log(8);
 	}
 });
