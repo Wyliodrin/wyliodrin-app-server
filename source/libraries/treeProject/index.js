@@ -207,7 +207,7 @@ function runProject (p)
 		//rmdir.sync(dir);
 		//fs.mkdirSync(dir);
 		var write_all_tree = function (p,dir,ext){
-			var generalMakefile = "run:\n";
+			var generalMakefile = "MAKEFLAGS += --silent\n\nrun:\n";
 			generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
 
 
