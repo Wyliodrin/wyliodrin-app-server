@@ -202,10 +202,11 @@ function runProject (p)
 			sudo = '';
 		}
 
-		////////////////////////////am in dir folderul, in p.t arborele
+		//in dir folder, in p.t the tree
 
 		//rmdir.sync(dir);
 		//fs.mkdirSync(dir);
+		//(above) used before, but they need root
 		var write_all_tree = function (p,dir,ext){
 			var generalMakefile = "MAKEFLAGS += --silent\n\nrun:\n";
 			generalMakefile += treeToFilesystem(p.t.children,dir,ext,generalMakefile);
