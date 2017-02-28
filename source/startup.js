@@ -24,6 +24,7 @@ var treeProject = require ('./libraries/treeProject');
 var network = require ('./libraries/network');
 var shell = require ('./libraries/shell');
 var file_explorer = require ('./libraries/file_explorer');
+var deploy = require ('./libraries/deploy');
 var task_manager = require ('./libraries/task_manager');
 var update = require ('./libraries/update');
 var package_manager = require ('./libraries/package_manager');
