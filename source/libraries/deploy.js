@@ -61,10 +61,15 @@ uplink.tags.on ('dep', function (p)
 	}
 	if (p.a == "undeploy")
 	{
-		////////////////////////fa undeploy pe hash p.b da ack
+		var hash = p.b;
+		var local = path.join(DIR,hash);
+		//////////////////////////////////////////////////////////////////////////////STOP THE SERVICE
+		rimraf.sync(local);
 	}
 	if (p.a == "redeploy")
 	{
-		////////////////////////////////////////////
+		var obj = p.b;
+		var hash = obj.hash;
+		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
 	}
 }
