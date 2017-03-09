@@ -89,4 +89,4 @@ uplink.tags.on ('dep', function (p)
 		var hash = obj.hash;
 		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
 	}
-}
+});
