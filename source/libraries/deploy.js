@@ -72,6 +72,8 @@ uplink.tags.on ('dep', function (p)
 
 		//ack
 		uplink.send ('dep', {a:"ACK", b:obj.hash});
+		console.log("am scris cce trebue");
+		console.log("\n"+obj.hash);
 	}
 	if (p.a == "undeploy")
 	{
