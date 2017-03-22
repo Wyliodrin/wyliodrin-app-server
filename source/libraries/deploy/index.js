@@ -36,12 +36,28 @@ else
 function command_os_dependent(name){
 	if (util.isWindows())
 	{
-		cmd = 'cmd /c '+path.join (__dirname, name+'.cmd')+' ';
+		return 'cmd /c '+path.join (__dirname, name+'.cmd')+' ';
 	}
 	else
 	{
-		cmd = board.shell+' '+path.join (__dirname, name+'.sh')+' ';
+		return  board.shell+' '+path.join (__dirname, name+'.sh')+' ';
 	}
+}
+
+function make_supervisor_file(obj){
+	var ret = "[supervisord]\n";
+	ret += "[program:" + SUPERVISOR_PREFIX + obj.hash + "]\n";
+	ret += "user=" + obj.supervisor_file.user + "\n";
+	ret += "directory=" + path.join(DIR,obj.hash) + "\n";
+	ret += "command=" + "python main.py" +"\n";//////////////////////////////////////////////////////////
+	ret += "autostart=" + obj.supervisor_file.autostart +"\n";
+	ret += "exitcodes=" + obj.supervisor_file.exitcodes +"\n";
+	ret += "autorestart=" + obj.supervisor_file.autorestart +"\n";
+	ret += "environment=" + obj.supervisor_file.environment +"\n";
+	ret += "priority=" + obj.supervisor_file.priority +"\n";
+
+	return ret;
+
 }
 		
 
@@ -63,9 +79,17 @@ uplink.tags.on ('dep', function (p)
 		var toSend = [];
 
 		_.each(projects, function(proj){
-			var hash = proj
+			var hash = proj;
 			var info = JSON.parse(fs.readFileSync(path.join(DIR,proj,INFO_FILE)).toString());
-			var final = _.merge({hash:hash}, info)
+
+			var cmd = command_os_dependent("status");
+			var arg1 = SUPERVISOR_PREFIX + hash;
+			exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+			{
+				info.status = stdout;
+			});
+
+			var final = _.merge({hash:hash}, info);
 			toSend.push(final);
 		});
 
@@ -116,7 +140,7 @@ uplink.tags.on ('dep', function (p)
 		var obj = p.b;
 		var local = path.join(DIR,obj.hash);
 		//fs.mkdirSync(local);
-		mkdirp(local);
+		mkdirp.sync(local);
 
 		//make info.json
 		fs.writeFileSync(path.join(local, "info.json"), JSON.stringify({title:obj.title,id:obj.id,date:obj.date,language:obj.language}));
@@ -124,7 +148,7 @@ uplink.tags.on ('dep', function (p)
 		//make content folder
 		local = path.join(local,"content");
 		//fs.mkdirSync(local);
-		mkdirp(local);
+		mkdirp.sync(local);
 
 		//make main file
 		//obj.language "python" "visual"
@@ -133,7 +157,7 @@ uplink.tags.on ('dep', function (p)
 
 		//make supervisord file
 		local = path.join(SUPERVISOR_DIR_TEMP, SUPERVISOR_PREFIX + obj.hash);
-		fs.writeFileSync(local, obj.supervisor_file);
+		fs.writeFileSync(local, make_supervisor_file(obj));
 
 		//make the command
 		var cmd = command_os_dependent("deploy");
@@ -154,7 +178,8 @@ uplink.tags.on ('dep', function (p)
 		var cmd = command_os_dependent("undeploy");
 		var arg1 = SUPERVISOR_PREFIX + hash;
 		var arg4 = path.join(SUPERVISOR_DIR, "wyliodrin." + hash); //supervisord script
-		exec (cmd + arg1 +' "'+sudo+'" ' + local + arg4, function (err, stdout, stderr)
+		console.log(cmd + arg1 +' "'+sudo+'" ' + local + arg4);
+		exec (cmd + arg1 +' "'+sudo+'" ' + local + " " + arg4, function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:hash});
