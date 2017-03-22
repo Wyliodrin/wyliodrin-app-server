@@ -1,0 +1,1 @@
+$2 supervisorctl start "$1"
