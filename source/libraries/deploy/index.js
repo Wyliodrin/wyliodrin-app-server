@@ -6,7 +6,7 @@ var debug = require ('debug')('wylidorin:app:server:file_explorer');
 var uplink = require ('../uplink');
 var rmdir = require ("rimraf");
 var settings = require("../settings");
-var spawn = require("child_process").spawnSync;
+var child_process = require("child_process");
 var _ = require("lodash");
 var mkdirp = require("mkdirp");
 var board = require ('../settings').board;
@@ -23,6 +23,28 @@ var SUPERVISOR_DIR_TEMP = "/tmp"
 var SUPERVISOR_DIR = "/etc/supervisor/conf.d";
 var SUPERVISOR_PREFIX = "wyliodrin.";
 
+var sudo = settings.SETTINGS.run.split(' ');
+if (sudo[0]==='sudo')
+{
+	sudo = 'sudo';
+}
+else
+{
+	sudo = '';
+}
+
+function command_os_dependent(name){
+	if (util.isWindows())
+	{
+		cmd = 'cmd /c '+path.join (__dirname, name+'.cmd')+' ';
+	}
+	else
+	{
+		cmd = board.shell+' '+path.join (__dirname, name+'.sh')+' ';
+	}
+}
+		
+
 debug ('Registering for tag dep');
 uplink.tags.on ('dep', function (p)
 {
@@ -31,9 +53,7 @@ uplink.tags.on ('dep', function (p)
 		var projects;
 		try
 		{
-			projects = fs.readdirSync(DIR).filter(function (value){
-				return !value.startsWith("wyliodrin-");
-			});
+			projects = fs.readdirSync(DIR);
 		}
 		catch (e)
 		{
@@ -43,9 +63,9 @@ uplink.tags.on ('dep', function (p)
 		var toSend = [];
 
 		_.each(projects, function(proj){
-			var hash = proj.substring(10);
+			var hash = proj
 			var info = JSON.parse(fs.readFileSync(path.join(DIR,proj,INFO_FILE)).toString());
-			var final = _merge({hash:hash}, info)
+			var final = _.merge({hash:hash}, info)
 			toSend.push(final);
 		});
 
@@ -56,22 +76,37 @@ uplink.tags.on ('dep', function (p)
 	if (p.a == "stop")
 	{
 		var hash = p.b;
-    	var cmd = spawn("sudo supervisorctl stop " + SUPERVISOR_PREFIX + hash);
-    	uplink.send ('dep', {a:"ACK", b:obj.hash});
+		var cmd = command_os_dependent("stop");
+		var arg1 = SUPERVISOR_PREFIX + hash;
+		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		{
+			//ack
+			uplink.send ('dep', {a:"ACK", b:hash});
+		});
 		///////////////////////fa stop pe hashul p.b, da ack
 	}
 	if (p.a == "run")
 	{
 		var hash = p.b;
-    	var cmd = spawn("sudo supervisorctl start " + SUPERVISOR_PREFIX + hash);
-    	uplink.send ('dep', {a:"ACK", b:obj.hash});
+		var cmd = command_os_dependent("start");
+		var arg1 = SUPERVISOR_PREFIX + hash;
+		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		{
+			//ack
+			uplink.send ('dep', {a:"ACK", b:hash});
+		});
 		////////////////////////fa run pe hashul p.b da ack
 	}
 	if (p.a == "restart")
 	{
 		var hash = p.b;
-    	var cmd = spawn("sudo supervisorctl restart " + SUPERVISOR_PREFIX + hash);
-    	uplink.send ('dep', {a:"ACK", b:obj.hash});
+		var cmd = command_os_dependent("restart");
+		var arg1 = SUPERVISOR_PREFIX + hash;
+		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		{
+			//ack
+			uplink.send ('dep', {a:"ACK", b:hash});
+		});
 		////////////////////////fa restart pe hashul p.b da ack
 	}
 	if (p.a == "deploy")
@@ -100,37 +135,14 @@ uplink.tags.on ('dep', function (p)
 		local = path.join(SUPERVISOR_DIR_TEMP, SUPERVISOR_PREFIX + obj.hash);
 		fs.writeFileSync(local, obj.supervisor_file);
 
-		//workaround for cp
-		var sudo = settings.SETTINGS.run.split(' ');
-		if (sudo[0]==='sudo')
-		{
-			sudo = 'sudo';
-		}
-		else
-		{
-			sudo = '';
-		}
+		//make the command
+		var cmd = command_os_dependent("deploy");
 
-		var cmd;
-		if (util.isWindows())
-		{
-			cmd = 'cmd /c '+path.join (__dirname, 'run.cmd')+' ';
-		}
-		else
-		{
-			cmd = board.shell+' '+path.join (__dirname, 'run.sh')+' ';
-		}
-		console.log("AICI AJUNG");
+		//run it
 		exec (cmd + local +' "'+sudo+'" ' + path.join(SUPERVISOR_DIR, SUPERVISOR_PREFIX + obj.hash), function (err, stdout, stderr)
 		{
-
-
 			//ack
 			uplink.send ('dep', {a:"ACK", b:obj.hash});
-			console.log("AM TRIMIT CE TREBE");
-
-
-
 		});
 
 	}
@@ -138,14 +150,23 @@ uplink.tags.on ('dep', function (p)
 	{
 		var hash = p.b;
 		var local = path.join(DIR,hash);
-		//////////////////////////////////////////////////////////////////////////////STOP THE SERVICE
-		rimraf.sync(local); //deleted folder
-		rimraf.sync(path.join(SUPERVISOR_DIR, "wyliodrin." + hash)); //deleted supervisord script
+
+		var cmd = command_os_dependent("undeploy");
+		var arg1 = SUPERVISOR_PREFIX + hash;
+		var arg4 = path.join(SUPERVISOR_DIR, "wyliodrin." + hash); //supervisord script
+		exec (cmd + arg1 +' "'+sudo+'" ' + local + arg4, function (err, stdout, stderr)
+		{
+			//ack
+			uplink.send ('dep', {a:"ACK", b:hash});
+		});
+
 	}
 	if (p.a == "redeploy")
 	{
+		//tbd
 		var obj = p.b;
 		var hash = obj.hash;
+		uplink.send ('dep', {a:"ACK", b:hash});
 		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
 	}
 });
