@@ -14,6 +14,8 @@ var util = require("../../util");
 var exec = require ('child_process').exec;
 
 
+
+
 console.log ('Loading deploy library');
 
 
@@ -25,6 +27,41 @@ var SUPERVISOR_PREFIX = "wyliodrin.";
 var SUPERVISOR_SUFFIX = ".conf";
 var CONTENT_DIR = "content";
 
+var DIALOG_OPEN = true;/////////////////////////////////////////////////////////////////////// 
+
+var QUEUE = [];
+var QUEUE_PERMIT = true;
+
+var TIMER_LS = 0;
+var TIMER_QUEUE = 0;
+
+
+function parse_queue(){
+	if (DIALOG_OPEN){
+		console.log("parsez quu " + QUEUE_PERMIT);
+		if (QUEUE_PERMIT == true){
+			console.log("acceptat");
+			var element = QUEUE.shift();
+			if (element === undefined)
+			{
+
+			}
+			else
+			{
+				QUEUE_PERMIT = false;
+				run_on_queue_element(element.cmd,element.done);
+			}
+		}
+		else{
+			console.log("blocat");
+		}
+	}
+}
+
+function add_to_queue(cmd,done){
+	QUEUE.push({"cmd":cmd,"done":done});
+}
+
 var sudo = settings.SETTINGS.run.split(' ');
 if (sudo[0]==='sudo')
 {
@@ -33,6 +70,31 @@ if (sudo[0]==='sudo')
 else
 {
 	sudo = '';
+}
+
+function run_on_queue_element(cmd, done){
+	exec(cmd, function(err, stdout, stderr){
+
+		var ERRORS = ["error: <class 'socket.error'>, [Errno 104] Connection reset by peer: file: /usr/lib/python2.7/socket.py line: 476",
+		"error: <class 'xmlrpclib.Fault'>, <Fault 6: 'SHUTDOWN_STATE'>: file: /usr/lib/python2.7/xmlrpclib.py line: 794",
+		"unix:///var/run/supervisor.sock no such file"];
+
+		var is_errored = false;
+
+		_.each(ERRORS, function(error){
+			if (stdout.indexOf(error) === 0){
+				is_errored = true;
+			}
+		});
+
+		if (is_errored){
+			run_on_queue_element(cmd, done);
+		}
+		else{
+			done(err,stdout,stderr);
+			QUEUE_PERMIT = true;
+		}
+	});
 }
 
 function command_os_dependent(name){
@@ -61,13 +123,12 @@ function make_supervisor_file(obj){
 	return ret;
 
 }
-		
 
-debug ('Registering for tag dep');
-uplink.tags.on ('dep', function (p)
-{
-	if (p.a == "ls")
-	{
+function give_ls(){
+	var cmd = command_os_dependent("status");
+		
+	add_to_queue (cmd + "000" +' "'+sudo+'" ' , function (err, stdout, stderr){
+
 		var projects;
 		try
 		{
@@ -78,44 +139,54 @@ uplink.tags.on ('dep', function (p)
 			projects = []; 
 		}
 
-		
-		var cmd = command_os_dependent("status");
-		
-		exec (cmd + "000" +' "'+sudo+'" ' , function (err, stdout, stderr){
+		var toSend = [];
 
-			var toSend = [];
+		console.log("stdout "+ stdout);
+		console.log("queuel " + QUEUE);
 
-			_.each(projects, function(proj){
-				var hash = proj;
-				var info = JSON.parse(fs.readFileSync(path.join(DIR,proj,INFO_FILE)).toString());
+		_.each(projects, function(proj){
+			var hash = proj;
+			var info = JSON.parse(fs.readFileSync(path.join(DIR,proj,INFO_FILE)).toString());
 
-				var procname = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
+			var procname = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
 
-				console.log("stdout");
-				console.log(stdout.split("\n"));
+			info.status = stdout.split("\n").filter(function (element){
+				return element.indexOf(procname) === 0
+			})[0];
+			if (info.status === undefined){
+				return;
+			}
+			
 
-				info.status = stdout.split("\n").filter(function (element){
-					return element.indexOf(procname) === 0
-				})[0].replace(/\s+/g, ' ').split(" ")[1];
 
-				var final = _.merge({hash:hash}, info);
-				toSend.push(final);
-				console.log(final.title+ "  "+final.status);
-			});
+			info.status = info.status.replace(/\s+/g, ' ').split(" ")[1];
 
-			console.log("tosend");
-			console.log(toSend);
-			uplink.send ('dep', {a:"ls", b:toSend});
+			var final = _.merge({hash:hash}, info);
+			toSend.push(final);
 		});
 
-		//pune busy status  (status)  hash si tot ce e in info.json
+		uplink.send ('dep', {a:"ls", b:toSend});
+	});
+	//pune busy status  (status)  hash si tot ce e in info.json
+}
+		
+
+debug ('Registering for tag dep');
+uplink.tags.on ('dep', function (p)
+{
+	if (p.a == "ls")
+	{
+		DIALOG_OPEN = true;
+		TIMER_QUEUE = setInterval(parse_queue, 300);
+		TIMER_LS = setInterval(give_ls, 1000);
+		give_ls();
 	}
 	if (p.a == "stop")
 	{
 		var hash = p.b;
 		var cmd = command_os_dependent("stop");
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
-		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		add_to_queue(cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:hash});
@@ -127,7 +198,7 @@ uplink.tags.on ('dep', function (p)
 		var hash = p.b;
 		var cmd = command_os_dependent("start");
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
-		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		add_to_queue(cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:hash});
@@ -139,7 +210,7 @@ uplink.tags.on ('dep', function (p)
 		var hash = p.b;
 		var cmd = command_os_dependent("restart");
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
-		exec (cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
+		add_to_queue(cmd + arg1 +' "'+sudo+'" ' , function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:hash});
@@ -176,7 +247,7 @@ uplink.tags.on ('dep', function (p)
 		var cmd = command_os_dependent("deploy");
 
 		//run it
-		exec (cmd + local +' "'+sudo+'" ' + path.join(SUPERVISOR_DIR, SUPERVISOR_PREFIX + obj.hash + SUPERVISOR_SUFFIX), function (err, stdout, stderr)
+		add_to_queue (cmd + local +' "'+sudo+'" ' + path.join(SUPERVISOR_DIR, SUPERVISOR_PREFIX + obj.hash + SUPERVISOR_SUFFIX), function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:obj.hash});
@@ -191,8 +262,8 @@ uplink.tags.on ('dep', function (p)
 		var cmd = command_os_dependent("undeploy");
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
 		var arg4 = path.join(SUPERVISOR_DIR, arg1); //supervisord script
-		console.log(cmd + arg1 +' "'+sudo+'" ' + local + arg4);
-		exec (cmd + arg1 +' "'+sudo+'" ' + local + " " + arg4, function (err, stdout, stderr)
+
+		add_to_queue (cmd + arg1 +' "'+sudo+'" ' + local + " " + arg4, function (err, stdout, stderr)
 		{
 			//ack
 			uplink.send ('dep', {a:"ACK", b:hash});
@@ -207,4 +278,14 @@ uplink.tags.on ('dep', function (p)
 		uplink.send ('dep', {a:"ACK", b:hash});
 		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
 	}
+	if (p.a == "exit")
+	{
+		clearInterval(TIMER_LS);
+		clearInterval(TIMER_QUEUE);
+		var DIALOG_OPEN = false;
+		var QUEUE = [];
+		TIMER_QUEUE = 0;
+		TIMER_LS = 0;
+	}
+
 });
