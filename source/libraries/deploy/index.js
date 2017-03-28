@@ -27,7 +27,7 @@ var SUPERVISOR_PREFIX = "wyliodrin.";
 var SUPERVISOR_SUFFIX = ".conf";
 var CONTENT_DIR = "content";
 
-var DIALOG_OPEN = true;/////////////////////////////////////////////////////////////////////// 
+var DIALOG_OPEN = false;
 
 var QUEUE = [];
 var QUEUE_PERMIT = true;
@@ -37,8 +37,8 @@ var TIMER_QUEUE = 0;
 
 
 function parse_queue(){
+	console.log("queue " + QUEUE);
 	if (DIALOG_OPEN){
-		console.log("parsez quu " + QUEUE_PERMIT);
 		if (QUEUE_PERMIT == true){
 			console.log("acceptat");
 			var element = QUEUE.shift();
@@ -125,6 +125,13 @@ function make_supervisor_file(obj){
 }
 
 function give_ls(){
+
+	if (QUEUE.length > 10){
+		return;
+	}
+
+	console.log("adaug ls");
+
 	var cmd = command_os_dependent("status");
 		
 	add_to_queue (cmd + "000" +' "'+sudo+'" ' , function (err, stdout, stderr){
@@ -140,9 +147,6 @@ function give_ls(){
 		}
 
 		var toSend = [];
-
-		console.log("stdout "+ stdout);
-		console.log("queuel " + QUEUE);
 
 		_.each(projects, function(proj){
 			var hash = proj;
@@ -282,10 +286,11 @@ uplink.tags.on ('dep', function (p)
 	{
 		clearInterval(TIMER_LS);
 		clearInterval(TIMER_QUEUE);
-		var DIALOG_OPEN = false;
-		var QUEUE = [];
+		DIALOG_OPEN = false;
+		QUEUE = [];
 		TIMER_QUEUE = 0;
 		TIMER_LS = 0;
+		QUEUE_PERMIT = true;
 	}
 
 });
