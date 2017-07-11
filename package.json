@@ -4,22 +4,30 @@
   "main": "startup.js",
   "repository": "https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
-    "async": "~1.5.2",
-    "authenticate-pam": "~1.0.0",
-    "debug": "~2.2.0",
-    "lodash": "~4.1.0",
+    "async": "~2.1.4",
+    "debug": "~2.5.2",
+    "lodash": "~4.17.3",
+    "mkdirp": "^0.5.1",
     "msgpack-lite": "~0.1.15",
     "pty.js": "~0.3.0",
-    "redis": "~2.4.2",
+    "redis": "~2.6.3",
     "rimraf": "^2.5.4",
-    "serialport": "~2.0.6",
+    "split2": "^2.1.1",
     "tcp-ping": "~0.1.1",
-    "wireless-tools": "~0.15.0"
+    "uuid": "^3.0.1",
+    "wireless-tools": "~0.18.1"
+  },
+  "optionalDependencies": {
+    "authenticate-pam": "~1.0.0",
+    "serialport": "^4.0.7"
   },
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Alexandru Radovici",
-  "license": "Apache"
+  "license": "Apache",
+  "jshintConfig": {
+    "node": true
+  }
 }
