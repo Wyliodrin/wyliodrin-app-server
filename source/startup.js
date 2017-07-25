@@ -29,6 +29,7 @@ var update = require ('./libraries/update');
 var package_manager = require ('./libraries/package_manager');
 var signal = require ('./libraries/signal');
 var notebook = require ('./libraries/notebook');
+var socketio = require ('./libraries/socketio');
 
 
 process.title = 'wyliodrin-app-server';
