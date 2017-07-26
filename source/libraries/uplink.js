@@ -14,7 +14,7 @@ var _ = require ('lodash');
 var path = require ('path');
 var gadget = require ('./gadget');
 //var net = require ('net');
-var socket = require('socket.io-client');
+var socketClient = require('socket.io-client');
 
 console.log ('Loading uplink library');
 
@@ -103,18 +103,18 @@ function run ()
 		reset (SOCKET);
 	}
 
-	io = socket("http://localhost:3000");
-	io.on('connect', function(){
+	server = socketClient("http://localhost:3000");
+	server.on('connect', function(){
 		console.log ('io connected');
 		reset (SOCKET);
-		io.on('data', function(data){
+		server.on('data', function(data){
 			for (var pos = 0; pos < data.length; pos++)
 			{
 				// console.log (data[pos]);
 				receivedDataPacket (data[pos]);
 			}
 		});
-		io.on ('connect_timeout', function ()
+		server.on ('connect_timeout', function ()
 		{
 			console.log ('timeout');
 			socket.destroy ();
@@ -123,7 +123,7 @@ function run ()
 			socket = null;
 		});
 
-		io.on ('error', function ()
+		server.on ('error', function ()
 		{
 			console.log ('error');
 			debug ('Socket error '+socket);
@@ -132,7 +132,7 @@ function run ()
 			socket = null;
 		});
 
-		io.on ('disconnect', function ()
+		server.on ('disconnect', function ()
 		{
 			console.log ('disconnect');
 			reset (SERIAL);
@@ -201,10 +201,10 @@ function run ()
 
 	module.exports.server = server;
 
-	server.listen (CONFIG_FILE.server || 7000, function (err)
-	{
-		bonjour.publish ();
-	});
+	// server.listen (CONFIG_FILE.server || 7000, function (err)
+	// {
+	// 	bonjour.publish ();
+	// });
 }
 
 var server = null;
