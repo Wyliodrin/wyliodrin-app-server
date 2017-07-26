@@ -13,8 +13,8 @@ var pam = util.load ('authenticate-pam');
 var _ = require ('lodash');
 var path = require ('path');
 var gadget = require ('./gadget');
-var net = require ('net');
-
+//var net = require ('net');
+var socket = require('socket.io-client');
 
 console.log ('Loading uplink library');
 
@@ -103,62 +103,101 @@ function run ()
 		reset (SOCKET);
 	}
 
-	server = net.createServer (function (_socket)
-	{
-		if (!socket)
+	io = socket("http://localhost:3000");
+	io.on('connect', function(){
+		console.log ('io connected');
+		reset (SOCKET);
+		io.on('data', function(data){
+			for (var pos = 0; pos < data.length; pos++)
+			{
+				// console.log (data[pos]);
+				receivedDataPacket (data[pos]);
+			}
+		});
+		io.on ('connect_timeout', function ()
 		{
-			socket = _socket;
-			if (util.isWindows ()) socket.setTimeout (12000);
-			debug ('Socket connection');
-			reset (SOCKET);
-			socket.on ('data', function (data)
-			{
-				// console.log (data.length);
-				for (var pos = 0; pos < data.length; pos++)
-				{
-					// console.log (data[pos]);
-					receivedDataPacket (data[pos]);
-				}
-			});
+			console.log ('timeout');
+			socket.destroy ();
+			debug ('Socket timeout');
+			login = false;
+			socket = null;
+		});
 
-			socket.on ('timeout', function ()
-			{
-				console.log ('timeout');
-				socket.destroy ();
-				debug ('Socket timeout');
-				login = false;
-				socket = null;
-			});
-
-			socket.on ('error', function ()
-			{
-				console.log ('error');
-				debug ('Socket error '+socket);
-				reset (SERIAL);
-				login = false;
-				socket = null;
-			});
-
-			socket.on ('end', function ()
-			{
-				console.log ('disconnect');
-				reset (SERIAL);
-				debug ('Socket disconnect');
-				login = false;
-				socket = null;
-			});
-		}
-		else
+		io.on ('error', function ()
 		{
-			debug ('There is another connection already');
-			var m = escape(msgpack.encode ({t:'e', d:{s: 'busy'}}));
-			_socket.write ('', function (){});
-			_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
-			_socket.write (m, function (){});
-			_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
-			_socket.end ();
-		}
+			console.log ('error');
+			debug ('Socket error '+socket);
+			reset (SERIAL);
+			login = false;
+			socket = null;
+		});
+
+		io.on ('disconnect', function ()
+		{
+			console.log ('disconnect');
+			reset (SERIAL);
+			debug ('Socket disconnect');
+			login = false;
+			socket = null;
+		});
 	});
+
+	// server = net.createServer (function (_socket)
+	// {
+	// 	if (!socket)
+	// 	{
+	// 		socket = _socket;
+	// 		if (util.isWindows ()) socket.setTimeout (12000);
+	// 		debug ('Socket connection');
+	// 		reset (SOCKET);
+	// 		socket.on ('data', function (data)
+	// 		{
+	// 			// console.log (data.length);
+	// 			for (var pos = 0; pos < data.length; pos++)
+	// 			{
+	// 				// console.log (data[pos]);
+	// 				receivedDataPacket (data[pos]);
+	// 			}
+	// 		});
+
+	// 		socket.on ('timeout', function ()
+	// 		{
+	// 			console.log ('timeout');
+	// 			socket.destroy ();
+	// 			debug ('Socket timeout');
+	// 			login = false;
+	// 			socket = null;
+	// 		});
+
+	// 		socket.on ('error', function ()
+	// 		{
+	// 			console.log ('error');
+	// 			debug ('Socket error '+socket);
+	// 			reset (SERIAL);
+	// 			login = false;
+	// 			socket = null;
+	// 		});
+
+	// 		socket.on ('end', function ()
+	// 		{
+	// 			console.log ('disconnect');
+	// 			reset (SERIAL);
+	// 			debug ('Socket disconnect');
+	// 			login = false;
+	// 			socket = null;
+	// 		});
+	// 	}
+	// 	else
+	// 	{
+	// 		debug ('There is another connection already');
+	// 		var m = escape(msgpack.encode ({t:'e', d:{s: 'busy'}}));
+	// 		_socket.write ('', function (){});
+	// 		_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
+	// 		_socket.write (m, function (){});
+	// 		_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
+	// 		_socket.end ();
+	// 	}
+	// });
 
 	module.exports.server = server;
 
