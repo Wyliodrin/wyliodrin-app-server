@@ -103,8 +103,7 @@ function run ()
 		reset (SOCKET);
 	}
 
-	var socketClient = io("http://localhost:3000");
-	console.log ('tried to connect');
+	var socketClient = io("http://192.168.1.115:3000");
 	socketClient.on('connect', function(){
 		console.log ('connected');
 		socket = {
@@ -112,50 +111,64 @@ function run ()
 			{
 				socketClient.disconnect();
 			},
-			write: function (data)
+			write: function (data, done)
 			{
-				socketClient.emit ('data', data);
+				console.log ('write');
+				console.log (data);
+				socketClient.emit ('packet', data);
+				process.nextTick (function ()
+				{
+					done ();
+				});
 			}
 		};
-		//TODO - ce e cu asta????!!!!!!!
-		//server = socketClient;
 
 		reset (SOCKET);
+		//TODO - de sters
+		login = true;
 		var boardId = 'placa_mea_draguta';
 		socketClient.emit ('boardConnect', boardId);
-		socketClient.on('data', function(data){
-			for (var pos = 0; pos < data.length; pos++)
-			{
-				// console.log (data[pos]);
-				receivedDataPacket (data[pos]);
-			}
-		});
-		socketClient.on ('connect_timeout', function ()
-		{
-			console.log ('timeout');
-			socketClient.disconnect ();
-			debug ('Socket timeout');
-			login = false;
-			socket = null;
-		});
+		
+	});
 
-		socketClient.on ('error', function (error)
+	socketClient.on('packet', function(data){
+		console.log ('got packet');
+		console.log (data);
+		for (var pos = 0; pos < data.length; pos++)
 		{
-			console.log ('error');
-			debug ('Socket error '+error);
-			reset (SERIAL);
-			login = false;
-			socket = null;
-		});
+			// console.log (data[pos]);
+			receivedDataPacket (data[pos]);
+		}
+	});
+	socketClient.on ('connect_timeout', function ()
+	{
+		console.log ('timeout');
+		socketClient.disconnect ();
+		debug ('Socket timeout');
+		login = false;
+		socket = null;
+	});
+	socketClient.on ('error', function (error)
+	{
+		console.log ('error');
+		debug ('Socket error '+error);
+		reset (SERIAL);
+		login = false;
+		socket = null;
+	});
 
-		socketClient.on ('disconnect', function ()
-		{
-			console.log ('disconnect');
-			reset (SERIAL);
-			debug ('Socket disconnect');
-			login = false;
-			socket = null;
-		});
+	// socketClient.on ('reconnect', function ()
+	// {
+
+	// });
+
+	socketClient.on ('disconnect', function ()
+	{
+		console.log ('disconnect');
+		reset (SERIAL);
+		debug ('Socket disconnect');
+		login = false;
+		socket = null;
 	});
 
 	// server = net.createServer (function (_socket)
@@ -334,6 +347,7 @@ function reset (type)
 	}
 	else
 	{
+		socketSending = false;
 		_send = _socketSend;
 	}
 }
@@ -406,6 +420,10 @@ function receivedDataPacket (data)
 							gadget.status ();
 							gadget.capabilities ();
 						}
+					}
+					else
+					{
+						debug ('Login first');
 					}
 				}
 				previousByte = 0;
@@ -551,8 +569,6 @@ function _socketSend ()
 			// console.log (msgpack.decode (new Buffer (m, 'base64')));
 			// console.log (m.toString ());
 
-			//TODO - de sters
-			login = true;
 			if (login)
 			{
 				socketSending = true;

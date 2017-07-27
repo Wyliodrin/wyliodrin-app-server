@@ -81,16 +81,23 @@ function status ()
 
 function sendVersion ()
 {
-	debug ('Sending version');
-	child_process.exec("wylio -v", function (err, stdout, stderr){
-		if (err){
-			uplink.send ('sv', {v:version, os:os.type()+' '+os.release()});
-			console.log(err);
-		}
-		else{
-			uplink.send ('sv', {v:version, os:os.type()+' '+os.release(), libv:stdout});
-		}
-	});
+	// debug ('Sending version');
+	// try
+	// {
+	// 	child_process.exec("wylio -v", function (err, stdout, stderr){
+	// 		if (err){
+	// 			uplink.send ('sv', {v:version, os:os.type()+' '+os.release()});
+	// 			console.log(err);
+	// 		}
+	// 		else{
+	// 			uplink.send ('sv', {v:version, os:os.type()+' '+os.release(), libv:stdout});
+	// 		}
+	// 	});
+	// }
+	// catch (e)
+	// {
+	// 	console.log ('wylio is not available');
+	// }
 }
 
 function capabilities ()
