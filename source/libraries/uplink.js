@@ -14,7 +14,7 @@ var _ = require ('lodash');
 var path = require ('path');
 var gadget = require ('./gadget');
 //var net = require ('net');
-var socketClient = require('socket.io-client');
+var io = require('socket.io-client');
 
 console.log ('Loading uplink library');
 
@@ -103,36 +103,52 @@ function run ()
 		reset (SOCKET);
 	}
 
-	server = socketClient("http://localhost:3000");
-	server.on('connect', function(){
-		console.log ('io connected');
+	var socketClient = io("http://localhost:3000");
+	console.log ('tried to connect');
+	socketClient.on('connect', function(){
+		console.log ('connected');
+		socket = {
+			end: function ()
+			{
+				socketClient.disconnect();
+			},
+			write: function (data)
+			{
+				socketClient.emit ('data', data);
+			}
+		};
+		//TODO - ce e cu asta????!!!!!!!
+		//server = socketClient;
+
 		reset (SOCKET);
-		server.on('data', function(data){
+		var boardId = 'placa_mea_draguta';
+		socketClient.emit ('boardConnect', boardId);
+		socketClient.on('data', function(data){
 			for (var pos = 0; pos < data.length; pos++)
 			{
 				// console.log (data[pos]);
 				receivedDataPacket (data[pos]);
 			}
 		});
-		server.on ('connect_timeout', function ()
+		socketClient.on ('connect_timeout', function ()
 		{
 			console.log ('timeout');
-			socket.destroy ();
+			socketClient.disconnect ();
 			debug ('Socket timeout');
 			login = false;
 			socket = null;
 		});
 
-		server.on ('error', function ()
+		socketClient.on ('error', function (error)
 		{
 			console.log ('error');
-			debug ('Socket error '+socket);
+			debug ('Socket error '+error);
 			reset (SERIAL);
 			login = false;
 			socket = null;
 		});
 
-		server.on ('disconnect', function ()
+		socketClient.on ('disconnect', function ()
 		{
 			console.log ('disconnect');
 			reset (SERIAL);
@@ -534,6 +550,9 @@ function _socketSend ()
 			var m = escape(msgpack.encode (message));
 			// console.log (msgpack.decode (new Buffer (m, 'base64')));
 			// console.log (m.toString ());
+
+			//TODO - de sters
+			login = true;
 			if (login)
 			{
 				socketSending = true;
