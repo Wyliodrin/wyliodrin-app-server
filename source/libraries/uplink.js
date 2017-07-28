@@ -102,8 +102,8 @@ function run ()
 	{
 		reset (SOCKET);
 	}
-
-	var socketClient = io("http://192.168.1.115:3000");
+	console.log ('try to connect');
+	var socketClient = io("http://192.168.1.113:3000");
 	socketClient.on('connect', function(){
 		console.log ('connected');
 		socket = {
@@ -124,7 +124,6 @@ function run ()
 		};
 
 		reset (SOCKET);
-		//TODO - de sters
 		login = true;
 		var boardId = 'placa_mea_draguta';
 		socketClient.emit ('boardConnect', boardId);
