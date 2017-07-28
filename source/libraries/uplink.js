@@ -32,6 +32,69 @@ if (serialport)
 	SerialPort = serialport;
 }
 
+var reconnectTime = 500;
+function websocketConnect ()
+{
+	var ws = new WebSocket("ws://192.168.1.160:3000");
+	ws.on ('open', function (){
+		console.log ('ws connection open');
+		reconnectTime = 500;
+		socket = {
+			end: function ()
+			{
+				ws.close();
+			},
+			write: function (data, done)
+			{
+				ws.send (data);
+				process.nextTick (function ()
+				{
+					done ();
+				});
+			}
+		};
+
+		reset (SOCKET);
+		login = true;
+		//var boardId = require ('./boardId').id;
+		var boardId = 'lllllll';
+		ws.send (boardId);
+
+	});
+	ws.on ('message', function (data){
+		console.log (data);
+		for (var pos = 0; pos < data.length; pos++)
+		{
+			// console.log (data[pos]);
+			receivedDataPacket (data[pos]);
+		}
+	});
+
+	ws.on ('error', function (error)
+	{
+		console.log ('error');
+		debug ('Socket error '+error);
+		reset (SERIAL);
+		login = false;
+		socket = null;
+	});
+	ws.on ('close', function ()
+	{
+		console.log ('ws close');
+		reset (SERIAL);
+		// debug ('Socket disconnect');
+		// login = false;
+		// socket = null;
+		setTimeout (function (){
+			console.log (reconnectTime);
+			reconnectTime = reconnectTime * 2;
+			websocketConnect ();
+			console.log ('in reconnect');
+		}, reconnectTime);
+	});
+
+}
+
 function run ()
 {
 	PACKET_SEPARATOR = CONFIG_FILE.serialpacketseparator || PACKET_SEPARATOR;
@@ -102,57 +165,8 @@ function run ()
 	{
 		reset (SOCKET);
 	}
-	const ws = new WebSocket("ws://192.168.1.160:3000");
-	ws.on ('open', function (){
-		console.log ('ws connection open');
-		socket = {
-			end: function ()
-			{
-				ws.close();
-			},
-			write: function (data, done)
-			{
-				ws.send (data);
-				process.nextTick (function ()
-				{
-					done ();
-				});
-			}
-		};
-
-		reset (SOCKET);
-		login = true;
-		var boardId = require ('./boardId').id;
-		ws.send (boardId);
-
-	});
-	ws.on ('message', function (data){
-		console.log (data);
-		for (var pos = 0; pos < data.length; pos++)
-		{
-			// console.log (data[pos]);
-			receivedDataPacket (data[pos]);
-		}
-	});
-
-	ws.on ('error', function (error)
-	{
-		console.log ('error');
-		debug ('Socket error '+error);
-		reset (SERIAL);
-		login = false;
-		socket = null;
-	});
-
-	ws.on ('close', function ()
-	{
-		console.log ('ws close');
-		reset (SERIAL);
-		// debug ('Socket disconnect');
-		// login = false;
-		// socket = null;
-	});
-
+	
+	websocketConnect();
 	// server = net.createServer (function (_socket)
 	// {
 	// 	if (!socket)
