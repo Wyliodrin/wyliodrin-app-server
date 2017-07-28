@@ -14,7 +14,7 @@ var _ = require ('lodash');
 var path = require ('path');
 var gadget = require ('./gadget');
 //var net = require ('net');
-var io = require('socket.io-client');
+const WebSocket = require('ws');
 
 console.log ('Loading uplink library');
 
@@ -102,20 +102,17 @@ function run ()
 	{
 		reset (SOCKET);
 	}
-	console.log ('try to connect');
-	var socketClient = io("http://192.168.1.113:3000");
-	socketClient.on('connect', function(){
-		console.log ('connected');
+	const ws = new WebSocket("ws://192.168.1.160:3000");
+	ws.on ('open', function (){
+		console.log ('ws connection open');
 		socket = {
 			end: function ()
 			{
-				socketClient.disconnect();
+				ws.close();
 			},
 			write: function (data, done)
 			{
-				console.log ('write');
-				console.log (data);
-				socketClient.emit ('packet', data);
+				ws.send (data);
 				process.nextTick (function ()
 				{
 					done ();
@@ -125,13 +122,11 @@ function run ()
 
 		reset (SOCKET);
 		login = true;
-		var boardId = 'placa_mea_draguta';
-		socketClient.emit ('boardConnect', boardId);
-		
-	});
+		var boardId = require ('./boardId').id;
+		ws.send (boardId);
 
-	socketClient.on('packet', function(data){
-		console.log ('got packet');
+	});
+	ws.on ('message', function (data){
 		console.log (data);
 		for (var pos = 0; pos < data.length; pos++)
 		{
@@ -139,15 +134,8 @@ function run ()
 			receivedDataPacket (data[pos]);
 		}
 	});
-	socketClient.on ('connect_timeout', function ()
-	{
-		console.log ('timeout');
-		socketClient.disconnect ();
-		debug ('Socket timeout');
-		login = false;
-		socket = null;
-	});
-	socketClient.on ('error', function (error)
+
+	ws.on ('error', function (error)
 	{
 		console.log ('error');
 		debug ('Socket error '+error);
@@ -156,18 +144,13 @@ function run ()
 		socket = null;
 	});
 
-	// socketClient.on ('reconnect', function ()
-	// {
-
-	// });
-
-	socketClient.on ('disconnect', function ()
+	ws.on ('close', function ()
 	{
-		console.log ('disconnect');
+		console.log ('ws close');
 		reset (SERIAL);
-		debug ('Socket disconnect');
-		login = false;
-		socket = null;
+		// debug ('Socket disconnect');
+		// login = false;
+		// socket = null;
 	});
 
 	// server = net.createServer (function (_socket)
