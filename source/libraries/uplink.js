@@ -36,10 +36,7 @@ var ws = null;
 function websocketConnect ()
 {
 	console.log ('trying to connect');
-	ws = new WebSocket(process.env.SOCKET_HOST,
-	{
-		origin: process.env.SOCKET_ORIGIN
-	});
+	ws = new WebSocket(process.env.SOCKET_HOST);
 	ws.on ('open', function (){
 		console.log ('ws connection open');
 		reconnectTime = 500;
@@ -66,7 +63,6 @@ function websocketConnect ()
 
 	});
 	ws.on ('message', function (data){
-		console.log (data);
 		for (var pos = 0; pos < data.length; pos++)
 		{
 			// console.log (data[pos]);
@@ -91,10 +87,8 @@ function websocketConnect ()
 		// login = false;
 		// socket = null;
 		setTimeout (function (){
-			console.log (reconnectTime);
 			reconnectTime = reconnectTime * 2;
 			websocketConnect ();
-			console.log ('in reconnect');
 		}, reconnectTime);
 	});
 
