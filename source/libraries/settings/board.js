@@ -38,6 +38,16 @@ var board = {
 		avahi:'publish',
 		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'csharp':true, 'streams':true}
 	},
+	'ibotm10':
+	{
+		firmware:'',
+		firmware_makefile: '',
+		signals:'redis',
+		nettype:'iwconfig',
+		shell:'bash',
+		avahi:'publish',
+		capabilities: {}
+	},
 	'udooneo':
 	{
 		serial:'/dev/ttyGS0',

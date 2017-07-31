@@ -64,11 +64,13 @@ uplink.tags.on ('disc', function (p)
 	}
 });
 
+var boardId = require ('../boardId');
+
 function status ()
 {
 	debug ('Sending status');
 	uplink.send ('i', {
-			n:settings.boardname || settings.CONFIG_FILE.jid, 
+			n:boardId || settings.boardname || settings.CONFIG_FILE.jid, 
 			c:settings.boardtype, 
 			r:project.getProjectPid()!==0,
 			tr:treeProject.getProjectPid()!==0,

@@ -13,7 +13,6 @@ var pam = util.load ('authenticate-pam');
 var _ = require ('lodash');
 var path = require ('path');
 var gadget = require ('./gadget');
-//var net = require ('net');
 const WebSocket = require('ws');
 
 console.log ('Loading uplink library');
@@ -33,9 +32,14 @@ if (serialport)
 }
 
 var reconnectTime = 500;
+var ws = null;
 function websocketConnect ()
 {
-	var ws = new WebSocket("ws://192.168.1.160:3000");
+	console.log ('trying to connect');
+	ws = new WebSocket(process.env.SOCKET_HOST,
+	{
+		origin: process.env.SOCKET_ORIGIN
+	});
 	ws.on ('open', function (){
 		console.log ('ws connection open');
 		reconnectTime = 500;
@@ -56,8 +60,8 @@ function websocketConnect ()
 
 		reset (SOCKET);
 		login = true;
-		//var boardId = require ('./boardId').id;
-		var boardId = 'lllllll';
+		var boardId = require ('./boardId');
+		console.log ('send board '+boardId);
 		ws.send (boardId);
 
 	});
@@ -73,6 +77,7 @@ function websocketConnect ()
 	ws.on ('error', function (error)
 	{
 		console.log ('error');
+		console.log (error);
 		debug ('Socket error '+error);
 		reset (SERIAL);
 		login = false;
@@ -167,69 +172,9 @@ function run ()
 	}
 	
 	websocketConnect();
-	// server = net.createServer (function (_socket)
-	// {
-	// 	if (!socket)
-	// 	{
-	// 		socket = _socket;
-	// 		if (util.isWindows ()) socket.setTimeout (12000);
-	// 		debug ('Socket connection');
-	// 		reset (SOCKET);
-	// 		socket.on ('data', function (data)
-	// 		{
-	// 			// console.log (data.length);
-	// 			for (var pos = 0; pos < data.length; pos++)
-	// 			{
-	// 				// console.log (data[pos]);
-	// 				receivedDataPacket (data[pos]);
-	// 			}
-	// 		});
-
-	// 		socket.on ('timeout', function ()
-	// 		{
-	// 			console.log ('timeout');
-	// 			socket.destroy ();
-	// 			debug ('Socket timeout');
-	// 			login = false;
-	// 			socket = null;
-	// 		});
-
-	// 		socket.on ('error', function ()
-	// 		{
-	// 			console.log ('error');
-	// 			debug ('Socket error '+socket);
-	// 			reset (SERIAL);
-	// 			login = false;
-	// 			socket = null;
-	// 		});
-
-	// 		socket.on ('end', function ()
-	// 		{
-	// 			console.log ('disconnect');
-	// 			reset (SERIAL);
-	// 			debug ('Socket disconnect');
-	// 			login = false;
-	// 			socket = null;
-	// 		});
-	// 	}
-	// 	else
-	// 	{
-	// 		debug ('There is another connection already');
-	// 		var m = escape(msgpack.encode ({t:'e', d:{s: 'busy'}}));
-	// 		_socket.write ('', function (){});
-	// 		_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
-	// 		_socket.write (m, function (){});
-	// 		_socket.write (BUFFER_PACKET_SEPARATOR, function (){});
-	// 		_socket.end ();
-	// 	}
-	// });
+	
 
 	module.exports.server = server;
-
-	// server.listen (CONFIG_FILE.server || 7000, function (err)
-	// {
-	// 	bonjour.publish ();
-	// });
 }
 
 var server = null;

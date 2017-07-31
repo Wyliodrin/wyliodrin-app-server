@@ -3,6 +3,7 @@
 
 var util = require ('./util.js');
 var debug = require ('debug')('wyliodrin:app:server');
+require ('dotenv').config();
 
 /* startup */
 
