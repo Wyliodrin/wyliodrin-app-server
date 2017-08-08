@@ -69,7 +69,7 @@ function wifi_connect (p)
 
 try
 {
-	var p = JSON.parse(fs.readFileSync (path.join (gadget.env.HOME, 'wifi.json')));
+	var p = JSON.parse(fs.readFileSync (path.join (settings.env.HOME, 'wifi.json')));
 	wifi_connect (p);
 }
 catch (e)
