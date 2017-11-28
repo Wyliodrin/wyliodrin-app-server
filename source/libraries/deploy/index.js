@@ -282,6 +282,14 @@ uplink.tags.on ('dep', function (p)
 		uplink.send ('dep', {a:"ACK", b:hash});
 		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
 	}
+	if(p.a == "logerr")
+	{
+		uplink.send('err');
+	}
+	if(p.a == "logout")
+	{
+		uplink.send('out');
+	}
 	if (p.a == "exit")
 	{
 		clearInterval(TIMER_LS);
