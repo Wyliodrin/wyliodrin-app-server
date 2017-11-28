@@ -288,12 +288,12 @@ uplink.tags.on ('dep', function (p)
 		const option = {matchBase:true};
 		var obj = p.b;
 		var hash = obj.hash;
-		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr;
 		//console.log(arg1);
 		/*globby(arg1,option).then(paths => {
 			console.log(paths);
 		});*/
-		exec('find "/var/log/supervisor" -name "arg1"',function(err,stdout,stderr){
+		exec('find "/var/log/supervisor" -name "arg1*"',function(err,stdout,stderr){
 			console.log(stdout);
 			console.log(stderr);
 			console.log(err);
