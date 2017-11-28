@@ -285,19 +285,14 @@ uplink.tags.on ('dep', function (p)
 	}
 	if(p.a == "logerr")
 	{
-		const option = {matchBase:true};
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
 		var obj = p.b;
 		var hash = obj.hash;
-		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
-		//console.log(arg1);
-		/*globby(arg1,option).then(paths => {
-			console.log(paths);
-		});*/
-		exec('find "/var/log/supervisor" -name arg1',function(err,stdout,stderr){
-			console.log(stdout);
-			console.log(stderr);
-			console.log(err);
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS,function(logfile){
+			console.log(logfile);
 		});
+
 	}
 	if(p.a == "logout")
 	{
