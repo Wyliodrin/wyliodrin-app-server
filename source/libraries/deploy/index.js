@@ -293,17 +293,24 @@ uplink.tags.on ('dep', function (p)
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				logerrcontent=fss.readFile(SUPERVISOR_DIR_LOGS+"/"+logfile);
+				logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
 		console.log(logerrcontent);
 
 	}
 	if(p.a == "logout")
 	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var logoutcontent= "";
 		var obj = p.b;
 		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
-		console.log(arg1);
+		var logs=fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				logoutcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
+		});
+		console.log(logoutcontent);
 	}
 	if (p.a == "exit")
 	{
