@@ -286,14 +286,16 @@ uplink.tags.on ('dep', function (p)
 	if(p.a == "logerr")
 	{
 		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var logerrcontent= "";
 		var obj = p.b;
 		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				console.log(logfile);
+				logerrcontent=logfile.content;
 		});
+		console.log(logerrcontent);
 
 	}
 	if(p.a == "logout")
