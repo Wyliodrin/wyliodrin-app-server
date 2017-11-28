@@ -12,6 +12,7 @@ var mkdirp = require("mkdirp");
 var board = require ('../settings').board;
 var util = require("../../util");
 var exec = require ('child_process').exec;
+const globby = require('globby');
 
 
 
@@ -284,14 +285,21 @@ uplink.tags.on ('dep', function (p)
 	}
 	if(p.a == "logerr")
 	{
+		const option = {matchBase:true};
 		var obj = p.b;
 		var hash = obj.hash;
-		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
-		console.log(arg1);
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		//console.log(arg1);
+		globby(arg1,option).then(paths => {
+			console.log(paths);
+		});
 	}
 	if(p.a == "logout")
 	{
-		console.log('out');
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		console.log(arg1);
 	}
 	if (p.a == "exit")
 	{
