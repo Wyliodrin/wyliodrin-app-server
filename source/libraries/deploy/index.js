@@ -291,7 +291,8 @@ uplink.tags.on ('dep', function (p)
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
-			console.log(logfile);
+			if(logfile.includes(arg1))
+				console.log(logfile);
 		});
 
 	}
