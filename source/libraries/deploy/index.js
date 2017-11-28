@@ -284,11 +284,11 @@ uplink.tags.on ('dep', function (p)
 	}
 	if(p.a == "logerr")
 	{
-		uplink.send('err');
+		console.log('err');
 	}
 	if(p.a == "logout")
 	{
-		uplink.send('out');
+		console.log('out');
 	}
 	if (p.a == "exit")
 	{
