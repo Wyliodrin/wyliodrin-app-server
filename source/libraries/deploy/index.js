@@ -293,7 +293,7 @@ uplink.tags.on ('dep', function (p)
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				logerrcontent=logfile.content;
+				logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
 		console.log(logerrcontent);
 
