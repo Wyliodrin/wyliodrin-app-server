@@ -284,8 +284,8 @@ uplink.tags.on ('dep', function (p)
 	}
 	if(p.a == "logerr")
 	{
-		var hash =p.b;
-		console.log('err');
+		var obj = p.b;
+		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
 		console.log(arg1);
 	}
