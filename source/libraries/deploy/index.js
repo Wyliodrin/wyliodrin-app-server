@@ -285,6 +285,8 @@ uplink.tags.on ('dep', function (p)
 	if(p.a == "logerr")
 	{
 		console.log('err');
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
+		console.log(arg1);
 	}
 	if(p.a == "logout")
 	{
