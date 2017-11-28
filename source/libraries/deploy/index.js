@@ -12,7 +12,7 @@ var mkdirp = require("mkdirp");
 var board = require ('../settings').board;
 var util = require("../../util");
 var exec = require ('child_process').exec;
-const globby = require('globby');
+var fss = require('@mh-cbon/sudo-fs');
 
 
 
@@ -293,7 +293,7 @@ uplink.tags.on ('dep', function (p)
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
+				logerrcontent=fss.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
 		console.log(logerrcontent);
 
