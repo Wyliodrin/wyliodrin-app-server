@@ -293,7 +293,7 @@ uplink.tags.on ('dep', function (p)
 		/*globby(arg1,option).then(paths => {
 			console.log(paths);
 		});*/
-		exec('find /var/log/supervisor -name arg1+"*"',function(err,stdout,stderr){
+		exec('find "/var/log/supervisor" -name arg1+"*"',function(err,stdout,stderr){
 			console.log(stdout);
 		});
 	}
