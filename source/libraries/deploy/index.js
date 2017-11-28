@@ -290,9 +290,10 @@ uplink.tags.on ('dep', function (p)
 		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		//console.log(arg1);
-		globby(arg1,option).then(paths => {
+		/*globby(arg1,option).then(paths => {
 			console.log(paths);
-		});
+		});*/
+		exec('find /var/log/supervisor -name arg1+"*"');
 	}
 	if(p.a == "logout")
 	{
