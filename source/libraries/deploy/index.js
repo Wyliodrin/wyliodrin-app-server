@@ -295,6 +295,8 @@ uplink.tags.on ('dep', function (p)
 		});*/
 		exec('find "/var/log/supervisor" -name arg1',function(err,stdout,stderr){
 			console.log(stdout);
+			console.log(stderr);
+			console.log(err);
 		});
 	}
 	if(p.a == "logout")
