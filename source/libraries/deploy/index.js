@@ -288,7 +288,7 @@ uplink.tags.on ('dep', function (p)
 		const option = {matchBase:true};
 		var obj = p.b;
 		var hash = obj.hash;
-		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"*";
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX;
 		//console.log(arg1);
 		/*globby(arg1,option).then(paths => {
 			console.log(paths);
