@@ -295,13 +295,12 @@ uplink.tags.on ('dep', function (p)
 			if(logfile.includes(arg1))
 				var errorlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 				//logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
-				exec('sudo tail -n 5 "errorlog"',function(err,stdout,stderr){
-					console.log(stdout);
-					console.log(err);
-					console.log(stderr);
-				});
 		});
-		console.log(logerrcontent);
+		exec('sudo tail -n 5 "errorlog"',function(err,stdout,stderr){
+			console.log(stdout);
+			console.log(err);
+			console.log(stderr);
+		});
 
 	}
 	if(p.a == "logout")
