@@ -298,7 +298,7 @@ uplink.tags.on ('dep', function (p)
 		});
 		var cmderr = "sudo tail -n 5 "+errlog;
 		exec(cmderr,function(err,errlogcontent,stderr){
-			uplink.send('dep',errlogcontent);
+			uplink.send('dep',{a:"errlogcontent", b:errlogcontent});
 			//console.log(stdout);
 		});
 
@@ -318,7 +318,7 @@ uplink.tags.on ('dep', function (p)
 		});
 		var cmdout = "sudo tail -n 5 "+outlog;
 		exec(cmdout,function(err,outlogcontent,stderr){
-			uplink.send('dep',outlogcontent);
+			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
 		});
 	}
 	if (p.a == "exit")
