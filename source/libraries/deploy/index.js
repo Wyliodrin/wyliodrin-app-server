@@ -293,7 +293,13 @@ uplink.tags.on ('dep', function (p)
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
+				var errorlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+				//logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
+				exec('sudo tail -n 5 errorlog',function(err,stdout,stderr){
+					console.log(stdout);
+					console.log(err);
+					console.log(stderr);
+				});
 		});
 		console.log(logerrcontent);
 
