@@ -297,10 +297,9 @@ uplink.tags.on ('dep', function (p)
 				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
 		var cmderr = "sudo tail -n 5 "+errlog;
-		exec(cmderr,function(err,stdout,stderr){
-			console.log(stdout);
-			console.log(err);
-			console.log(stderr);
+		exec(cmderr,function(err,errlogcontent,stderr){
+			uplink.send('dep',errlogcontent);
+			//console.log(stdout);
 		});
 
 	}
@@ -318,10 +317,9 @@ uplink.tags.on ('dep', function (p)
 				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
 		var cmdout = "sudo tail -n 5 "+outlog;
-		exec(cmdout,function(err,stdout,stderr){
-			console.log(stdout);
+		exec(cmdout,function(err,outlogcontent,stderr){
+			console.log(outlogcontent);
 		});
-		//console.log(outlog);
 	}
 	if (p.a == "exit")
 	{
