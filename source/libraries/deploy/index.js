@@ -317,7 +317,8 @@ uplink.tags.on ('dep', function (p)
 				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
 				//logoutcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
-		exec('sudo tail -n 5 $outlog',function(err,stdout,stderr){
+		var cmdout = "sudo tail -n 5 "+outlog;
+		exec(cmdout,function(err,stdout,stderr){
 			console.log(err);
 			console.log(stdout);
 			console.log(stderr);
