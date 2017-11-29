@@ -318,7 +318,7 @@ uplink.tags.on ('dep', function (p)
 		});
 		var cmdout = "sudo tail -n 5 "+outlog;
 		exec(cmdout,function(err,outlogcontent,stderr){
-			console.log(outlogcontent);
+			uplink.send('dep',outlogcontent);
 		});
 	}
 	if (p.a == "exit")
