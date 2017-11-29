@@ -311,9 +311,10 @@ uplink.tags.on ('dep', function (p)
 		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
 		var logs=fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var outlog = "";
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				var outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
+				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
 				//logoutcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
 		/*exec('sudo tail -n 5 $outlog',function(err,stdout,stderr){
