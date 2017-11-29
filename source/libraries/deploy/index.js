@@ -303,7 +303,7 @@ uplink.tags.on ('dep', function (p)
 		});
 
 	}
-	if(p.a == "logout")
+	if(p.a == "outlog")
 	{
 		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
 		var logoutcontent= "";
