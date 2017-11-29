@@ -316,12 +316,12 @@ uplink.tags.on ('dep', function (p)
 				var outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
 				//logoutcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
-		exec('sudo tail -n 5 $outlog',function(err,stdout,stderr){
+		/*exec('sudo tail -n 5 $outlog',function(err,stdout,stderr){
 			console.log(err);
 			console.log(stdout);
 			console.log(stderr);
-		});
-		console.log(logoutcontent);
+		});*/
+		console.log(outlog);
 	}
 	if (p.a == "exit")
 	{
