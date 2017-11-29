@@ -291,12 +291,13 @@ uplink.tags.on ('dep', function (p)
 		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
-				var errorlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
-				//logerrcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
-		exec('sudo tail -n 5 $errorlog',function(err,stdout,stderr){
+		var cmderr = "sudo tail -n 5 "+errlog;
+		exec(cmderr,function(err,stdout,stderr){
 			console.log(stdout);
 			console.log(err);
 			console.log(stderr);
@@ -315,13 +316,10 @@ uplink.tags.on ('dep', function (p)
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
 				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
-				//logoutcontent=fs.readFileSync(SUPERVISOR_DIR_LOGS+"/"+logfile).toString();
 		});
 		var cmdout = "sudo tail -n 5 "+outlog;
 		exec(cmdout,function(err,stdout,stderr){
-			console.log(err);
 			console.log(stdout);
-			console.log(stderr);
 		});
 		//console.log(outlog);
 	}
