@@ -299,7 +299,6 @@ uplink.tags.on ('dep', function (p)
 		var cmderr = "sudo tail -n 5 "+errlog;
 		exec(cmderr,function(err,errlogcontent,stderr){
 			uplink.send('dep',{a:"errlogcontent", b:errlogcontent});
-			//console.log(stdout);
 		});
 
 	}
@@ -320,6 +319,25 @@ uplink.tags.on ('dep', function (p)
 		exec(cmdout,function(err,outlogcontent,stderr){
 			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
 		});
+	}
+	if(p.a == "clearlogerr")
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var logerrcontent= "";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+		});
+		var cmdremove = "sudo rm -fr "+errlog;
+		var cmdtouch = "sudo touch "+errlog;
+		exec(cmdremove);
+		exec(cmdtouch);
+		uplink.send('dep',{a:"clearlog",b:"ok"});
 	}
 	if (p.a == "exit")
 	{
