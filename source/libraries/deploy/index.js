@@ -36,6 +36,7 @@ var QUEUE_PERMIT = true;
 var TIMER_LS = 0;
 var TIMER_QUEUE = 0;
 
+var index=0;
 
 function parse_queue(){
 	console.log("queue " + QUEUE);
@@ -459,12 +460,16 @@ uplink.tags.on ('dep', function (p)
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		var errlog= "";
+		var nameoferrlog="";
 		var MAXPACKET = 32*1024;
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
+			{
 				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameoferrlog=logfile;
+			}
 		});
-		var index=0;
+		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
 		send_file(errlog,index,MAXPACKET,function (data,index,end,all)
 		{
 			uplink.send ('dep',{a:'fe3',f:data,i:index,end:end,all:all});
