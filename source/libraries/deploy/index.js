@@ -455,8 +455,8 @@ uplink.tags.on ('dep', function (p)
 	if(p.a == 'downloaderr')
 	{
 		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
-		//var obj = p.b;
-		var hash = p.b;
+		var obj = p.b;
+		var hash = obj.hash;
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		var errlog= "";
