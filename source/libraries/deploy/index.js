@@ -416,7 +416,7 @@ uplink.tags.on ('dep', function (p)
 			if(logfile.includes(arg1))
 				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
-		uplink.send('dep',{a:'downloaderr'});
+		uplink.send('dep',{a:'downloaderr',b:'errlog'});
 	}
 	if (p.a == "exit")
 	{
