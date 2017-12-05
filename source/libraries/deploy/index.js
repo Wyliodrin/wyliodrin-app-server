@@ -474,7 +474,7 @@ uplink.tags.on ('dep', function (p)
 		}, function ()
 		{
 			uplink.send('fe6', {a:'down',e:'ENOENT'});
-		}
+		});
 		//uplink.send('dep',{a:'downloaderr',b:'errlog'});
 	}
 	if (p.a == "exit")
