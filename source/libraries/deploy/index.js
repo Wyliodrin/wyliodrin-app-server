@@ -411,15 +411,12 @@ uplink.tags.on ('dep', function (p)
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
 		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		var errlog= "";
+		var MAXPACKET = 32*1024;
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
 				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
-		/*send_file(errlog,p.z,p.size,function (data,index,end,all)
-		{
-
-		});*/
-		console.log(errlog);
+		uplink.send('downloaderr',{a:errlog});
 	}
 	if (p.a == "exit")
 	{
