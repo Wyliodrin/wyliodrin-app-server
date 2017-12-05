@@ -230,6 +230,7 @@ function send_file(link,index,pksize,callyes,callacces,callnofile)
 	{
 		if (err)
 		{
+			console.log("eroarea obtinuta este: "+err);
 			callnofile();
 		}
 		else
@@ -469,14 +470,25 @@ uplink.tags.on ('dep', function (p)
 				nameoferrlog=logfile;
 			}
 		});
+		console.log(errlog);
+
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
-		send_file(errlog,index,MAXPACKET,function (data,index,end,all)
+		send_file(errlog,index,MAXPACKET,
+			
+			
+		function (data,index,end,all)
 		{
 			uplink.send ('dep',{a:'fe3',f:data,i:index,end:end,all:all});
-		}, function ()
+		}, 
+		
+		
+		function ()
 		{
 			uplink.send('fe6', {a:'down',e:'EACCES'});
-		}, function ()
+		}, 
+		
+		
+		function ()
 		{
 			uplink.send('fe6', {a:'down',e:'ENOENT'});
 		});
