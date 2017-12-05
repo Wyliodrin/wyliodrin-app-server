@@ -175,6 +175,53 @@ function give_ls(){
 	//pune busy status  (status)  hash si tot ce e in info.json
 }
 		
+function send_file(link,index,pksize,callyes,callacces,callnofile)
+{
+	fs.open(link,'r', function (err, fd)
+	{
+		if (err)
+		{
+			callnofile();
+		}
+		else
+		{
+			fs.fstat(fd, function(err, stats) {
+				if (err)
+				{
+					callacces();
+				}
+				else
+				{
+					var bufferSize;
+					var end;
+					if (stats.size > index+pksize)
+					{
+						//max packet size
+						bufferSize = pksize;
+						end = false;
+					}
+					else
+					{
+						bufferSize = stats.size-index;
+						end = true;
+					}
+					var buffer = new Buffer(bufferSize);
+					fs.read(fd,buffer,0,bufferSize,index,function (err, bytesRead, buffer)
+					{
+						if (err)
+						{
+							callacces();
+						}
+						else
+						{
+							callyes(buffer,index+bufferSize,end,stats.size);
+						}
+					});
+				}
+			});
+		}
+	});
+}
 
 debug ('Registering for tag dep');
 uplink.tags.on ('dep', function (p)
@@ -355,6 +402,24 @@ uplink.tags.on ('dep', function (p)
 		exec(cmdremove);
 		exec(cmdtouch);
 		uplink.send('dep',{a:"clearlog",b:"ok"});
+	}
+	if(p.a == 'downloaderr')
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+		});
+		/*send_file(errlog,p.z,p.size,function (data,index,end,all)
+		{
+
+		});*/
+		console.log(errlog);
 	}
 	if (p.a == "exit")
 	{
