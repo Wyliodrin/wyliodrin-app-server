@@ -121,6 +121,7 @@ function make_supervisor_file(obj){
 	ret += "autorestart=" + obj.supervisor_file.autorestart +"\n";
 	ret += "environment=" + obj.supervisor_file.environment +"\n";
 	ret += "priority=" + obj.supervisor_file.priority +"\n";
+	ret += "umask=" + obj.supervisor_file.umask +"\n";
 
 	return ret;
 
