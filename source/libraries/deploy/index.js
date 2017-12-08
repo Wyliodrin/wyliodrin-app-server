@@ -177,53 +177,6 @@ function give_ls(){
 	//pune busy status  (status)  hash si tot ce e in info.json
 }
 		
-function send_file(link,index,pksize,callyes,callacces,callnofile)
-{
-	fs.open(link,'r', function (err, fd)
-	{
-		if (err)
-		{
-			callnofile();
-		}
-		else
-		{
-			fs.fstat(fd, function(err, stats) {
-				if (err)
-				{
-					callacces();
-				}
-				else
-				{
-					var bufferSize;
-					var end;
-					if (stats.size > index+pksize)
-					{
-						//max packet size
-						bufferSize = pksize;
-						end = false;
-					}
-					else
-					{
-						bufferSize = stats.size-index;
-						end = true;
-					}
-					var buffer = new Buffer(bufferSize);
-					fs.read(fd,buffer,0,bufferSize,index,function (err, bytesRead, buffer)
-					{
-						if (err)
-						{
-							callacces();
-						}
-						else
-						{
-							callyes(buffer,index+bufferSize,end,stats.size);
-						}
-					});
-				}
-			});
-		}
-	});
-}
 
 function send_file(link,index,pksize,callyes,callacces,callnofile)
 {
@@ -239,6 +192,7 @@ function send_file(link,index,pksize,callyes,callacces,callnofile)
 			fs.fstat(fd, function(err, stats) {
 				if (err)
 				{
+					console.log("123eroare obtinuta este: "+err);
 					callacces();
 				}
 				else
