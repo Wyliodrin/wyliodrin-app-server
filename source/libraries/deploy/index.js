@@ -235,7 +235,7 @@ uplink.tags.on ('dep', function (p)
 	{
 		DIALOG_OPEN = true;
 		TIMER_QUEUE = setInterval(parse_queue, 300);
-		TIMER_LS = setInterval(give_ls, 1000);
+		TIMER_LS = setInterval(give_ls, 6000);
 		give_ls();
 	}
 	if (p.a == "stop")
@@ -348,7 +348,7 @@ uplink.tags.on ('dep', function (p)
 			if(logfile.includes(arg1))
 				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
 		});
-		var cmderr = "sudo tail -n 5 "+errlog;
+		var cmderr = "sudo tail -n 50 "+errlog;
 		exec(cmderr,function(err,errlogcontent,stderr){
 			uplink.send('dep',{a:"errlogcontent", b:errlogcontent});
 		});
@@ -372,7 +372,7 @@ uplink.tags.on ('dep', function (p)
 				nameofoutlog=logfile;
 			}
 		});
-		var cmdout = "sudo tail -n 5 "+outlog;
+		var cmdout = "sudo tail -n 50 "+outlog;
 		exec(cmdout,function(err,outlogcontent,stderr){
 			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
 		});
