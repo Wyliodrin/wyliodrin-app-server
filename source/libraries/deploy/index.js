@@ -474,7 +474,7 @@ uplink.tags.on ('dep', function (p)
 		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
 		exec(cmdtemp);
 		var tempfile="/var/tmp/"+nameoferrlog;
-		console.log(tempfile);
+		console.log(nameoferrlog);
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
 		send_file(tempfile,index,MAXPACKET,
 			
