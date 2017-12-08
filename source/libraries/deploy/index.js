@@ -471,7 +471,6 @@ uplink.tags.on ('dep', function (p)
 				nameoferrlog=logfile;
 			}
 		});
-		console.log(errlog);
 		var cmdtemp = "sudo cat "+errlog+" > /home/pi/"+nameoferrlog;
 		exec(cmdtemp);
 		var tempfile="/home/pi/"+nameoferrlog;
