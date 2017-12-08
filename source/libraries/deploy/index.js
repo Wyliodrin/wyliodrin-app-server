@@ -471,9 +471,9 @@ uplink.tags.on ('dep', function (p)
 				nameoferrlog=logfile;
 			}
 		});
-		var cmdtemp = "sudo cat "+errlog+" > /home/pi/"+nameoferrlog;
+		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
 		exec(cmdtemp);
-		var tempfile="/home/pi/"+nameoferrlog;
+		var tempfile="/var/tmp/"+nameoferrlog;
 		console.log(tempfile);
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
 		send_file(tempfile,index,MAXPACKET,
