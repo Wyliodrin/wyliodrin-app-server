@@ -352,7 +352,8 @@ uplink.tags.on ('dep', function (p)
 		exec(cmderr,function(err,errlogcontent,stderr){
 			uplink.send('dep',{a:"errlogcontent", b:errlogcontent});
 		});
-
+		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
+		exec(cmdtemp);
 	}
 	if(p.a == "logout")
 	{
@@ -425,8 +426,6 @@ uplink.tags.on ('dep', function (p)
 				nameoferrlog=logfile;
 			}
 		});
-		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
-		exec(cmdtemp);
 		var tempfile="/var/tmp/"+nameoferrlog;
 		console.log(nameoferrlog);
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
