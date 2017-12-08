@@ -476,7 +476,7 @@ uplink.tags.on ('dep', function (p)
 		exec(cmdtemp);
 		var tempfile="/home/pi/"+nameoferrlog;
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
-		send_file(tempfile,index,MAXPACKET,
+		send_file(errlog,index,MAXPACKET,
 			
 		function (data,index,end,all)
 		{
