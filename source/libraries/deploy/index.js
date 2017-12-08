@@ -364,15 +364,19 @@ uplink.tags.on ('dep', function (p)
 		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
 		var logs=fs.readdirSync(SUPERVISOR_DIR_LOGS);
 		var outlog = "";
+		var nameofoutlog="";
 		_.each(logs,function(logfile){
 			if(logfile.includes(arg1))
+			{
 				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameofoutlog=logfile;
+			}
 		});
 		var cmdout = "sudo tail -n 5 "+outlog;
 		exec(cmdout,function(err,outlogcontent,stderr){
 			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
 		});
-		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
+		var cmdtemp = "sudo cat "+outlog+" > /var/tmp/"+nameofoutlog;
 		exec(cmdtemp);
 	}
 	if(p.a == "clearlogerr")
