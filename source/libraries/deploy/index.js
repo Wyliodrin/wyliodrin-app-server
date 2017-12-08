@@ -427,8 +427,45 @@ uplink.tags.on ('dep', function (p)
 			}
 		});
 		var tempfile="/var/tmp/"+nameoferrlog;
-		console.log(nameoferrlog);
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
+		send_file(tempfile,index,MAXPACKET,
+			
+		function (data,index,end,all)
+		{
+			uplink.send ('dep',{a:'fe3',f:data,i:index,end:end,all:all});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'EACCES'});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'ENOENT'});
+		});
+	}
+	if(p.a == 'downloadout')
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var outlog= "";
+		var nameofoutlog="";
+		var MAXPACKET = 32*1024;
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+			{
+				outlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameofoutlog=logfile;
+			}
+		});
+		var tempfile="/var/tmp/"+nameofoutlog;
+		uplink.send('dep',{a:'outlogpath',b:nameofoutlog});
 		send_file(tempfile,index,MAXPACKET,
 			
 		function (data,index,end,all)
