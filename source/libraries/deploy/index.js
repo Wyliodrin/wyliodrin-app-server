@@ -372,6 +372,8 @@ uplink.tags.on ('dep', function (p)
 		exec(cmdout,function(err,outlogcontent,stderr){
 			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
 		});
+		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
+		exec(cmdtemp);
 	}
 	if(p.a == "clearlogerr")
 	{
