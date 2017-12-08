@@ -12,6 +12,7 @@ var mkdirp = require("mkdirp");
 var board = require ('../settings').board;
 var util = require("../../util");
 var exec = require ('child_process').exec;
+var fss = require('@mh-cbon/sudo-fs');
 
 
 
@@ -35,6 +36,7 @@ var QUEUE_PERMIT = true;
 var TIMER_LS = 0;
 var TIMER_QUEUE = 0;
 
+var index=0;
 
 function parse_queue(){
 	console.log("queue " + QUEUE);
@@ -119,6 +121,7 @@ function make_supervisor_file(obj){
 	ret += "autorestart=" + obj.supervisor_file.autorestart +"\n";
 	ret += "environment=" + obj.supervisor_file.environment +"\n";
 	ret += "priority=" + obj.supervisor_file.priority +"\n";
+	ret += "umask=" + obj.supervisor_file.umask +"\n";
 
 	return ret;
 
@@ -175,6 +178,56 @@ function give_ls(){
 }
 		
 
+function send_file(link,index,pksize,callyes,callacces,callnofile)
+{
+	fs.open(link,'r', function (err, fd)
+	{
+		if (err)
+		{
+			console.log("eroarea obtinuta este: "+err);
+			callnofile();
+		}
+		else
+		{
+			fs.fstat(fd, function(err, stats) {
+				if (err)
+				{
+					console.log("123eroare obtinuta este: "+err);
+					callacces();
+				}
+				else
+				{
+					var bufferSize;
+					var end;
+					if (stats.size > index+pksize)
+					{
+						//max packet size
+						bufferSize = pksize;
+						end = false;
+					}
+					else
+					{
+						bufferSize = stats.size-index;
+						end = true;
+					}
+					var buffer = new Buffer(bufferSize);
+					fs.read(fd,buffer,0,bufferSize,index,function (err, bytesRead, buffer)
+					{
+						if (err)
+						{
+							callacces();
+						}
+						else
+						{
+							callyes(buffer,index+bufferSize,end,stats.size);
+						}
+					});
+				}
+			});
+		}
+	});
+}
+
 debug ('Registering for tag dep');
 uplink.tags.on ('dep', function (p)
 {
@@ -182,7 +235,7 @@ uplink.tags.on ('dep', function (p)
 	{
 		DIALOG_OPEN = true;
 		TIMER_QUEUE = setInterval(parse_queue, 300);
-		TIMER_LS = setInterval(give_ls, 1000);
+		TIMER_LS = setInterval(give_ls, 6000);
 		give_ls();
 	}
 	if (p.a == "stop")
@@ -281,6 +334,162 @@ uplink.tags.on ('dep', function (p)
 		var hash = obj.hash;
 		uplink.send ('dep', {a:"ACK", b:hash});
 		//////////////////////////////////////////// UNDEPLOY THEN REDEPLOY
+	}
+	if(p.a == "logerr")
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var logerrcontent= "";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+		});
+		var cmderr = "sudo tail -n 50 "+errlog;
+		exec(cmderr,function(err,errlogcontent,stderr){
+			uplink.send('dep',{a:"errlogcontent", b:errlogcontent});
+		});
+		var cmdtemp = "sudo cat "+errlog+" > /var/tmp/"+nameoferrlog;
+		exec(cmdtemp);
+	}
+	if(p.a == "logout")
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var logoutcontent= "";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		var logs=fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var outlog = "";
+		var nameofoutlog="";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+			{
+				outlog= SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameofoutlog=logfile;
+			}
+		});
+		var cmdout = "sudo tail -n 50 "+outlog;
+		exec(cmdout,function(err,outlogcontent,stderr){
+			uplink.send('dep',{a:"outlogcontent", b:outlogcontent});
+		});
+		var cmdtemp = "sudo cat "+outlog+" > /var/tmp/"+nameofoutlog;
+		exec(cmdtemp);
+	}
+	if(p.a == "clearlogerr")
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+		});
+		var cmdremove = "sudo rm -fr "+errlog;
+		var cmdtouch = "sudo touch "+errlog;
+		exec(cmdremove);
+		exec(cmdtouch);
+		uplink.send('dep',{a:"clearlog",b:"ok"});
+	}
+	if(p.a == "clearlogout")
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+		});
+		var cmdremove = "sudo rm -fr "+errlog;
+		var cmdtouch = "sudo touch "+errlog;
+		exec(cmdremove);
+		exec(cmdtouch);
+		uplink.send('dep',{a:"clearlog",b:"ok"});
+	}
+	if(p.a == 'downloaderr')
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stderr";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var errlog= "";
+		var nameoferrlog="";
+		var MAXPACKET = 32*1024;
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+			{
+				errlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameoferrlog=logfile;
+			}
+		});
+		var tempfile="/var/tmp/"+nameoferrlog;
+		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
+		send_file(tempfile,index,MAXPACKET,
+			
+		function (data,index,end,all)
+		{
+			uplink.send ('dep',{a:'fe3',f:data,i:index,end:end,all:all});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'EACCES'});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'ENOENT'});
+		});
+	}
+	if(p.a == 'downloadout')
+	{
+		var SUPERVISOR_DIR_LOGS="/var/log/supervisor";
+		var obj = p.b;
+		var hash = obj.hash;
+		var arg1 = SUPERVISOR_PREFIX + hash + SUPERVISOR_SUFFIX+"-stdout";
+		var logs= fs.readdirSync(SUPERVISOR_DIR_LOGS);
+		var outlog= "";
+		var nameofoutlog="";
+		var MAXPACKET = 32*1024;
+		_.each(logs,function(logfile){
+			if(logfile.includes(arg1))
+			{
+				outlog = SUPERVISOR_DIR_LOGS+"/"+logfile;
+				nameofoutlog=logfile;
+			}
+		});
+		var tempfile="/var/tmp/"+nameofoutlog;
+		uplink.send('dep',{a:'outlogpath',b:nameofoutlog});
+		send_file(tempfile,index,MAXPACKET,
+			
+		function (data,index,end,all)
+		{
+			uplink.send ('dep',{a:'fe3',f:data,i:index,end:end,all:all});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'EACCES'});
+		}, 
+		
+		
+		function ()
+		{
+			uplink.send('fe6', {a:'down',e:'ENOENT'});
+		});
 	}
 	if (p.a == "exit")
 	{

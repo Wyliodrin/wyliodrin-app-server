@@ -36,7 +36,7 @@ var board = {
 		nettype:'iwconfig',
 		shell:'bash',
 		avahi:'publish',
-		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'csharp':true}
+		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'csharp':true, 'streams':true}
 	},
 	'udooneo':
 	{
@@ -47,7 +47,7 @@ var board = {
 		nettype:'nm',
 		shell:'bash',
 		avahi:'publish',
-		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'csharp':true}
+		capabilities: {'nodejs':true, 'python':true, 'visual':true, 'shell':true, 'csharp':true, 'streams':true}
 	},
 	'arduinoyun':
 	{
