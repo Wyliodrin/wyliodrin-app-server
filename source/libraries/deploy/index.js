@@ -472,10 +472,10 @@ uplink.tags.on ('dep', function (p)
 			}
 		});
 		console.log(errlog);
-
+		var cmdtemp = "sudo cat "+errlog+" > /home/pi/";
+		var tempfile="/home/pi/"+nameoferrlog;
 		uplink.send('dep',{a:'errlogpath',b:nameoferrlog});
-		send_file(errlog,index,MAXPACKET,
-			
+		send_file(tempfile,index,MAXPACKET,
 			
 		function (data,index,end,all)
 		{
@@ -493,7 +493,6 @@ uplink.tags.on ('dep', function (p)
 		{
 			uplink.send('fe6', {a:'down',e:'ENOENT'});
 		});
-		//uplink.send('dep',{a:'downloaderr',b:'errlog'});
 	}
 	if (p.a == "exit")
 	{
