@@ -18,11 +18,12 @@ Update from older Raspibian for Pi 3 B+
 
 https://raspberrypi.stackexchange.com/questions/81725/raspbian-8-on-raspberry-pi-3-b
 
+'''
 sudo apt-get update
 sudo apt-get upgrade
 sudo apt-get install rpi-update
 sudo rpi-update
 wget https://archive.raspberrypi.org/debian/pool/main/f/firmware-nonfree/firmware-brcm80211_20161130-3+rpt3_all.deb
 sudo dpkg -i firmware-brcm80211_20161130-3+rpt3_all.deb
-
+'''
 
