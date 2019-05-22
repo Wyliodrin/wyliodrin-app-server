@@ -37,7 +37,7 @@ function findObjectById (id)
 
 function writeObjectOnLcd(index, callback) {
 
-	async.serial ([
+	async.series ([
 		lcd.init(),
 		lcd.clear(),
 		lcd.write(array[index].line1, 0, 0),
@@ -159,7 +159,7 @@ function displayPrevious() {
 
 function displayOnce(obj) {
 	setTimeout(function() {
-		async.serial ([
+		async.series ([
 			lcd.init(),
 			lcd.clear(),
 			lcd.write(obj.line1, 0, 0),
