@@ -24,7 +24,7 @@ function isWindows ()
 	return (process.platform === "win32");
 }
 
-var pty = load ('pty.js');
+var pty = load ('node-pty');
 
 if (pty === null) 
 {

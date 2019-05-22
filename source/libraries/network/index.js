@@ -67,9 +67,37 @@ function wifi_connect (p)
 	});
 }
 
+const PATH_WIFI = path.join (settings.env.HOME, 'wifi.json');
+
 try
 {
-	var p = JSON.parse(fs.readFileSync (path.join (settings.env.HOME, 'wifi.json')));
+	var setup = null;
+	let setupDate = new Date (1970, 0, 0);
+	try { setup = JSON.parse (fs.readFileSync ('/boot/wyliodrin.json')); setupDate = fs.statSync ('/boot/wyliodrin.json').mtime; } catch (e) { console.log ('INFO: no /boot/wyliodrin.json'); }
+	if (!setup) try { setup = JSON.parse (fs.readFileSync ('/wyliodrin.json')); setupDate = fs.statSync ('/wyliodrin.json').mtime; } catch (e) { console.log ('INFO: no /wyliodrin.json'); }
+
+	var p = null;
+	if (setup.network && setup.network.wifi)
+	{
+		p = {
+			s: setup.network.wifi.ssid,
+			p: setup.network.wifi.psk
+		};
+	}
+
+	try
+	{
+		if (fs.existsSync (PATH_WIFI))
+		{
+			let date = fs.statSync (PATH_WIFI);
+			if (date > setupDate || !p || !p.ssid) p = JSON.parse(fs.readFileSync (PATH_WIFI));
+		}
+	}
+	catch (e)
+	{
+		console.log ('ERROR: no wifi file');
+	}
+
 	wifi_connect (p);
 }
 catch (e)

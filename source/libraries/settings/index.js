@@ -24,7 +24,26 @@ var boardname = os.hostname();
 
 try
 {
-	boardname = fs.readFileSync ('/wyliodrin/boardname').toString ();
+	var setup = null;
+	let setupDate = new Date (1970, 0, 0);
+	try { setup = JSON.parse (fs.readFileSync ('/boot/wyliodrin.json')); setupDate = fs.statSync ('/boot/wyliodrin.json').mtime; } catch (e) { console.log ('INFO: no /boot/wyliodrin.json'); }
+	if (!setup) try { setup = JSON.parse (fs.readFileSync ('/wyliodrin.json')); setupDate = fs.statSync ('/wyliodrin.json').mtime; } catch (e) { console.log ('INFO: no /wyliodrin.json'); }
+
+	var p = null;
+	if (setup.name && setup.name.trim () !== '') boardname = setup.name.trim ();
+
+	try
+	{
+		if (fs.existsSync (PATH_WIFI))
+		{
+			let date = fs.statSync (PATH_WIFI);
+			if (date > setupDate || (boardname === os.hostname())) boardname = fs.readFileSync ('/wyliodrin/boardname').toString ();
+		}
+	}
+	catch (e)
+	{
+		console.log ('ERROR: no boardname');
+	}
 }
 catch (exception)
 {

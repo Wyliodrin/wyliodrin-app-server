@@ -1,15 +1,16 @@
 {
   "name": "wyliodrin-app-server",
-  "version": "1.0.10",
+  "version": "1.2.10",
   "main": "startup.js",
   "repository": "https://github.com/Wyliodrin/wyliodrin-app-server",
   "dependencies": {
-    "async": "~2.1.4",
-    "debug": "~2.5.2",
+    "async": "^2.1.5",
+    "debug": "^4.1.1",
+    "ip": "^1.1.5",
     "lodash": "~4.17.3",
     "mkdirp": "^0.5.1",
     "msgpack-lite": "~0.1.15",
-    "pty.js": "~0.3.0",
+    "node-pty": "^0.8.1",
     "redis": "~2.6.3",
     "rimraf": "^2.5.4",
     "split2": "^2.1.1",
@@ -19,7 +20,9 @@
   },
   "optionalDependencies": {
     "authenticate-pam": "~1.0.0",
-    "serialport": "^4.0.7"
+    "lcd": "^2.0.5",
+    "onoff": "^4.1.1",
+    "serialport": "^7.1.5"
   },
   "devDependencies": {},
   "scripts": {
