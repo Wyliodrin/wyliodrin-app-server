@@ -6,6 +6,7 @@ const ip = require ('ip');
 
 var project = require ('../project');
 var treeProject = require ('../treeProject');
+var uplink = require ('../uplink');
 
 
 function run () {
@@ -23,6 +24,14 @@ function run () {
 	if (!runningProject ())
 	{
 		lcd.replace(obj1);
+		if (uplink.inUse ())
+		{
+			board.ledGreen.writeSync(value);
+		}
+		else
+		{
+			board.ledRed.writeSync(value);
+		}
 	}
 	// lcd.replace(obj2);
 	setTimeout (run, 3000);
@@ -39,7 +48,7 @@ run ();
 board.button2.watch(function(err, value) {
 	if (!runningProject())
 	{
-		board.ledGreen.writeSync(value);
+		// board.ledGreen.writeSync(value);
 		if (value) {
 			lcd.displayPrevious();
 		}
@@ -52,7 +61,7 @@ board.button2.watch(function(err, value) {
 board.button1.watch(function(err, value) {
 	if (!runningProject())
 	{
-		board.ledRed.writeSync(value);
+		// board.ledRed.writeSync(value);
 		if (value) {
 			lcd.displayNext();
 		}

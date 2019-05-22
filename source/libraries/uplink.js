@@ -552,4 +552,8 @@ module.exports.packets = packets;
 module.exports.tags = tags;
 module.exports.server = server;
 module.exports.run = run;
+module.exports.inUse = function inUse ()
+{
+	return socket !== null;
+}
 
