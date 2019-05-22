@@ -31,6 +31,11 @@ var signal = require ('./libraries/signal');
 var notebook = require ('./libraries/notebook');
 
 
+
+
+var laboratory = require ('./libraries/laboratory');
+
+
 process.title = 'wyliodrin-app-server';
 
 // catch ctrl+c event and exit normally
