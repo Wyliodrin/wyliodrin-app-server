@@ -1,9 +1,7 @@
-#!/usr/bin/env node
-require('dotenv').config();
+
 
 const lcd = require('./printFunctions');
 const board = require('./gpiolib');
-const info = require('./info');
 const ip = require ('ip');
 
 var project = require ('../project');
