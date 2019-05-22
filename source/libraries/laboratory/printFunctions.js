@@ -63,7 +63,7 @@ function replace (object)
 			}
 			else
 			{
-				console.log ('Object is the same');
+				// console.log ('Object is the same');
 			}
 		}
 		else
@@ -74,7 +74,7 @@ function replace (object)
 	}
 	else
 	{
-		console.log ('Object has not id');
+		// console.log ('Object has not id');
 	}
 }
 

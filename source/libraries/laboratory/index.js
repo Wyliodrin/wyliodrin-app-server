@@ -30,7 +30,7 @@ function run () {
 
 function runningProject ()
 {
-	return project.getProjectPid() === 0 && treeProject.getProjectPid () === 0;
+	return project.getProjectPid() !== 0 || treeProject.getProjectPid () !== 0;
 }
 
 run ();
