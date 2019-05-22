@@ -41,6 +41,7 @@ function run () {
 		board.ledRed.writeSync(0);
 		board.ledGreen.writeSync(0);
 	}
+	ranProject = runningProject ();
 	// lcd.replace(obj2);
 	setTimeout (run, 3000);
 }
