@@ -8,6 +8,7 @@ var project = require ('../project');
 var treeProject = require ('../treeProject');
 var uplink = require ('../uplink');
 
+let ranProject = runningProject ();
 
 function run () {
 	// await info.updateInfo();
@@ -26,12 +27,19 @@ function run () {
 		lcd.replace(obj1);
 		if (uplink.inUse ())
 		{
-			board.ledGreen.writeSync(value);
+			board.ledRed.writeSync(0);
+			board.ledGreen.writeSync(1);
 		}
 		else
 		{
-			board.ledRed.writeSync(value);
+			board.ledRed.writeSync(1);
+			board.ledGreen.writeSync(0);
 		}
+	}
+	else if (ranProject === false)
+	{
+		board.ledRed.writeSync(0);
+		board.ledGreen.writeSync(0);
 	}
 	// lcd.replace(obj2);
 	setTimeout (run, 3000);
