@@ -6,6 +6,9 @@ const board = require('./gpiolib');
 const info = require('./info');
 const ip = require ('ip');
 
+var project = require ('../project');
+var treeProject = require ('../treeProject');
+
 
 function run () {
 	// await info.updateInfo();
@@ -19,20 +22,29 @@ function run () {
 	// 	line1: 'Device ID',
 	// 	line2: info.information.boardId
 	// };
-	lcd.replace(obj1);
+	if (!runningProject ())
+	{
+		lcd.replace(obj1);
+	}
 	// lcd.replace(obj2);
 	setTimeout (run, 3000);
 }
 
+function runningProject ()
+{
+	return project.getProjectPid() === 0 && treeProject.getProjectPid () === 0;
+}
+
 run ();
-
-
 
 //stanga
 board.button2.watch(function(err, value) {
-	board.ledGreen.writeSync(value);
-	if (value) {
-		lcd.displayPrevious();
+	if (!runningProject())
+	{
+		board.ledGreen.writeSync(value);
+		if (value) {
+			lcd.displayPrevious();
+		}
 	}
 });
 
@@ -40,9 +52,11 @@ board.button2.watch(function(err, value) {
 
 //dreapta
 board.button1.watch(function(err, value) {
-	board.ledRed.writeSync(value);
-	if (value) {
-		lcd.displayNext();
+	if (!runningProject())
+	{
+		board.ledRed.writeSync(value);
+		if (value) {
+			lcd.displayNext();
+		}
 	}
-
 });
