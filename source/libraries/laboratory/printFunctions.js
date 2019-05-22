@@ -38,10 +38,10 @@ function findObjectById (id)
 function writeObjectOnLcd(index, callback) {
 
 	async.series ([
-		lcd.init(),
-		lcd.clear(),
-		lcd.write(array[index].line1, 0, 0),
-		lcd.write(array[index].line2, 0, 1)
+		function (callback) { lcd.init().then(callback); },
+		function (callback) { lcd.clear().then (callback); },
+		function (callback) { lcd.write(array[index].line1, 0, 0).then (callback); },
+		function (callback) { lcd.write(array[index].line2, 0, 1).then (callback); }
 	], callback);
 }
 
@@ -160,10 +160,10 @@ function displayPrevious() {
 function displayOnce(obj) {
 	setTimeout(function() {
 		async.series ([
-			lcd.init(),
-			lcd.clear(),
-			lcd.write(obj.line1, 0, 0),
-			lcd.write(obj.line2, 0, 1)
+			function (callback) { lcd.init().then (callback); },
+			function (callback) { lcd.clear().then (callback); },
+			function (callback) { lcd.write(obj.line1, 0, 0).then (callback); },
+			function (callback) { lcd.write(obj.line2, 0, 1).then (callback); }
 		]);
 	}, delay);
 }
